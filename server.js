@@ -178,6 +178,7 @@ app.post('/api/:slug/chat', async (req, res) => {
   }
 });
 
+app.get('/healthz', (req, res) => res.status(200).send('ok'));
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('/s/:slug', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -186,12 +187,21 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Start serving immediately; never crash the process over a slow/unready
+// database (common right after the DB is first provisioned). Connect in
+// the background and keep retrying — requests made before it's ready just
+// get a clean 500, which the frontend already handles gracefully.
 const PORT = process.env.PORT || 10000;
-initDb()
-  .then(() => {
-    app.listen(PORT, () => console.log('Server listening on port', PORT));
-  })
-  .catch((e) => {
-    console.error('Failed to initialize database', e);
-    process.exit(1);
-  });
+app.listen(PORT, () => console.log('Server listening on port', PORT));
+
+function connectDbWithRetry() {
+  initDb()
+    .then(() => console.log('Database ready'))
+    .catch((e) => {
+      console.error('Database not ready yet, retrying in 5s:', e.message);
+      setTimeout(connectDbWithRetry, 5000);
+    });
+}
+connectDbWithRetry();
+
+process.on('unhandledRejection', (e) => console.error('Unhandled rejection:', e));
