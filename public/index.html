@@ -854,7 +854,26 @@ function renderApp(){
     if(box) box.scrollTop = box.scrollHeight;
   }
 }
-function render(){ renderApp(); }
+function render(){
+  var active = document.activeElement;
+  var activeId = active && active.id;
+  var activeValue = (active && 'value' in active) ? active.value : null;
+  var selStart = (active && typeof active.selectionStart === 'number') ? active.selectionStart : null;
+  var selEnd = (active && typeof active.selectionEnd === 'number') ? active.selectionEnd : null;
+
+  renderApp();
+
+  if(activeId){
+    var el = document.getElementById(activeId);
+    if(el){
+      if(activeValue!=null) el.value = activeValue;
+      el.focus();
+      if(selStart!=null && el.setSelectionRange){
+        try{ el.setSelectionRange(selStart, selEnd); }catch(e){}
+      }
+    }
+  }
+}
 
 function renderLangSelect(ctx){
   var opts = Object.keys(LANG_LABELS).map(function(l){ return '<option value="'+l+'"'+(getLang()===l?' selected':'')+'>'+LANG_LABELS[l]+'</option>'; }).join('');
