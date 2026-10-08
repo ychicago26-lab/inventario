@@ -305,13 +305,7 @@ es:{
   form_recommended:"Recomendado para este tono de piel",
   form_skin_tip_warm:"Los tonos cálidos (dorado, cobrizo, natural) realzan las pieles de subtono cálido o dorado.",
   form_skin_tip_cool:"Los tonos fríos (ceniza, perlado, caoba) favorecen las pieles de subtono frío o rosado.",
-  form_skin_tip_neutral:"Con subtono neutro casi todo combina bien; natural, perlado y caoba son apuestas seguras y versátiles.",
-  form_camera_btn:"Detectar con la cámara", form_camera_title:"Detección de tono de piel",
-  form_camera_desc:"El color se analiza directamente en su navegador para sugerir el subtono de piel. Ninguna imagen se envía ni se almacena en ningún lugar.",
-  form_camera_guide:"Coloque el rostro dentro del óvalo, con luz natural y uniforme.",
-  form_camera_capture:"Capturar",
-  form_camera_permission_denied:"No fue posible acceder a la cámara. Revise los permisos del navegador, o seleccione el tono manualmente.",
-  form_skin_detected:"Tono detectado: {tone}"
+  form_skin_tip_neutral:"Con subtono neutro casi todo combina bien; natural, perlado y caoba son apuestas seguras y versátiles."
 },
 en:{
   tagline:"Smart management for your salon",
@@ -368,13 +362,7 @@ en:{
   form_recommended:"Recommended for this skin tone",
   form_skin_tip_warm:"Warm shades (golden, copper, natural) flatter warm or golden undertones.",
   form_skin_tip_cool:"Cool shades (ash, pearl, mahogany) flatter cool or pink undertones.",
-  form_skin_tip_neutral:"With a neutral undertone almost everything works; natural, pearl and mahogany are safe, versatile bets.",
-  form_camera_btn:"Detect with camera", form_camera_title:"Skin tone detection",
-  form_camera_desc:"Colour is analysed directly in your browser to suggest an undertone. No image is ever sent or stored anywhere.",
-  form_camera_guide:"Position your face within the oval, under even, natural light.",
-  form_camera_capture:"Capture",
-  form_camera_permission_denied:"Camera access could not be granted. Please check your browser permissions, or select a tone manually.",
-  form_skin_detected:"Detected tone: {tone}"
+  form_skin_tip_neutral:"With a neutral undertone almost everything works; natural, pearl and mahogany are safe, versatile bets."
 },
 pt:{
   tagline:"Gestão inteligente para o seu salão",
@@ -431,13 +419,7 @@ pt:{
   form_recommended:"Recomendado para este tom de pele",
   form_skin_tip_warm:"Tons quentes (dourado, cobre, natural) valorizam peles de subtom quente ou dourado.",
   form_skin_tip_cool:"Tons frios (cinza, perolado, acaju) favorecem peles de subtom frio ou rosado.",
-  form_skin_tip_neutral:"Com subtom neutro quase tudo combina; natural, perolado e acaju são apostas seguras e versáteis.",
-  form_camera_btn:"Detectar com a câmera", form_camera_title:"Detecção de tom de pele",
-  form_camera_desc:"A cor é analisada diretamente no seu navegador para sugerir o subtom. Nenhuma imagem é enviada ou armazenada em lugar algum.",
-  form_camera_guide:"Posicione o rosto dentro do oval, sob luz natural e uniforme.",
-  form_camera_capture:"Capturar",
-  form_camera_permission_denied:"Não foi possível acessar a câmera. Verifique as permissões do navegador, ou selecione o tom manualmente.",
-  form_skin_detected:"Tom detectado: {tone}"
+  form_skin_tip_neutral:"Com subtom neutro quase tudo combina; natural, perolado e acaju são apostas seguras e versáteis."
 },
 fr:{
   tagline:"Gestion intelligente pour votre salon",
@@ -642,16 +624,8 @@ var state = {
   sampleAvailable:false, chatOpen:false, chatBusy:false, chatMessages:[],
   formulaLevel:6, formulaTarget:'ash', formulaSkin:'neutral'
 };
-var SALON_SLUG = (function(){
-  var m = location.pathname.match(/^\/s\/([a-z0-9-]+)/i);
-  return m ? m[1] : null;
-})();
-function slugify(s){
-  return (s||'salon').toString().toLowerCase()
-    .normalize('NFD').replace(/[̀-ͯ]/g,'')
-    .replace(/[^a-z0-9]+/g,'-').replace(/(^-+|-+$)/g,'').slice(0,40) || 'salon';
-}
-function apiUrl(path){ return '/api/' + encodeURIComponent(SALON_SLUG||'') + path; }
+var sampleFn = null;
+var chatAbortCtl = null;
 
 function getLang(){
   if(state.lang) return state.lang;
@@ -673,49 +647,68 @@ function setLang(l){
 }
 function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 
-/* ================= backend data layer (REST + polling) ================= */
+/* ================= local storage fallback db ================= */
+var LocalDB = (function(){
+  var listeners = {};
+  function load(name){ try{ return JSON.parse(localStorage.getItem('kynb_c_'+name)||'{}'); }catch(e){ return {}; } }
+  function save(name,obj){ try{ localStorage.setItem('kynb_c_'+name, JSON.stringify(obj)); }catch(e){} }
+  function notify(name){ var data=load(name); (listeners[name]||[]).forEach(function(cb){ cb(data); }); }
+  return {
+    getDoc:function(name,id){ return load(name)[id]; },
+    setDoc:function(name,id,data){ var all=load(name); all[id]=data; save(name,all); notify(name); },
+    updateDoc:function(name,id,patch){ var all=load(name); all[id]=Object.assign({}, all[id]||{}, patch); save(name,all); notify(name); },
+    deleteDoc:function(name,id){ var all=load(name); delete all[id]; save(name,all); notify(name); },
+    addDoc:function(name,data){ var all=load(name); var id='local_'+Date.now()+'_'+Math.random().toString(36).slice(2,8); all[id]=data; save(name,all); notify(name); return id; },
+    subscribe:function(name,cb){ listeners[name]=listeners[name]||[]; listeners[name].push(cb); cb(load(name)); return function(){ listeners[name]=listeners[name].filter(function(x){return x!==cb;}); }; }
+  };
+})();
+
+var dbInstance = null;
 var Data = {
-  init: async function(){ state.dbAvailable = true; },
+  init: async function(){
+    try{
+      if(window.claude && window.claude.use){
+        var d = await window.claude.use('db');
+        if(d){ dbInstance = d; state.dbAvailable = true; return; }
+      }
+    }catch(e){}
+    state.dbAvailable = false;
+  },
   subscribeConfig: function(cb){
-    var stopped = false;
-    function tick(){
-      if(stopped) return;
-      fetch(apiUrl('/config')).then(function(r){ return r.ok ? r.json() : null; })
-        .then(function(cfg){ if(!stopped) cb(cfg); })
-        .catch(function(){ if(!stopped) cb(null); });
+    if(state.dbAvailable){
+      return dbInstance.doc('config/main').onSnapshot(function(snap){ cb(snap.exists ? snap.data() : null); }, function(){ cb(null); });
     }
-    tick();
-    var iv = setInterval(tick, 4000);
-    return function(){ stopped = true; clearInterval(iv); };
+    return LocalDB.subscribe('config', function(map){ cb(map.main || null); });
   },
   setConfig: async function(data){
-    await fetch(apiUrl('/config'), {method:'PUT', headers:{'content-type':'application/json'}, body:JSON.stringify(data)});
+    if(state.dbAvailable){ await dbInstance.doc('config/main').set(data); }
+    else{ LocalDB.setDoc('config','main',data); }
   },
   subscribeCollection: function(name, cb){
-    var stopped = false;
-    function tick(){
-      if(stopped) return;
-      fetch(apiUrl('/'+name)).then(function(r){ return r.ok ? r.json() : []; })
-        .then(function(list){ if(!stopped) cb(list); })
-        .catch(function(){ if(!stopped) cb([]); });
+    if(state.dbAvailable){
+      return dbInstance.collection(name).onSnapshot(function(snap){
+        cb(snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); }));
+      }, function(){ cb([]); });
     }
-    tick();
-    var iv = setInterval(tick, 4000);
-    return function(){ stopped = true; clearInterval(iv); };
+    return LocalDB.subscribe(name, function(map){
+      cb(Object.keys(map).map(function(id){ return Object.assign({id:id}, map[id]); }));
+    });
   },
   addDoc: async function(coll, data){
-    var r = await fetch(apiUrl('/'+coll), {method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify(data)});
-    var j = await r.json();
-    return j.id;
+    if(state.dbAvailable){ var ref = await dbInstance.collection(coll).add(data); return ref.id; }
+    return LocalDB.addDoc(coll, data);
   },
   setDoc: async function(coll,id,data){
-    await fetch(apiUrl('/'+coll+'/'+encodeURIComponent(id)), {method:'PUT', headers:{'content-type':'application/json'}, body:JSON.stringify(data)});
+    if(state.dbAvailable){ await dbInstance.collection(coll).doc(id).set(data); }
+    else{ LocalDB.setDoc(coll,id,data); }
   },
   updateDoc: async function(coll,id,patch){
-    await fetch(apiUrl('/'+coll+'/'+encodeURIComponent(id)), {method:'PATCH', headers:{'content-type':'application/json'}, body:JSON.stringify(patch)});
+    if(state.dbAvailable){ await dbInstance.collection(coll).doc(id).update(patch); }
+    else{ LocalDB.updateDoc(coll,id,patch); }
   },
   deleteDoc: async function(coll,id){
-    await fetch(apiUrl('/'+coll+'/'+encodeURIComponent(id)), {method:'DELETE'});
+    if(state.dbAvailable){ await dbInstance.collection(coll).doc(id).delete(); }
+    else{ LocalDB.deleteDoc(coll,id); }
   }
 };
 
@@ -791,8 +784,7 @@ var ICONS = {
   drop:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 3s7 8 7 12.5a7 7 0 0 1-14 0C5 11 12 3 12 3Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>',
   empty:'<svg width="46" height="46" viewBox="0 0 24 24" fill="none"><path d="M7 6h10l1 15H6L7 6Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M9 3h6l1 3H8l1-3Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>',
   chat:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M4 12c0-4.4 3.8-8 8.5-8S21 7.6 21 12s-3.8 8-8.5 8c-1 0-2-.15-2.9-.43L5 21l1.1-3.8C4.8 15.9 4 14 4 12Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>',
-  send:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M21 3 3 10.5l7 2.5 2.5 7L21 3Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/></svg>',
-  camera:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 8.5h3l1.3-2h7.4l1.3 2h3v11H4v-11Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><circle cx="12" cy="14" r="3.2" stroke="currentColor" stroke-width="1.4"/></svg>'
+  send:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M21 3 3 10.5l7 2.5 2.5 7L21 3Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/></svg>'
 };
 
 /* ================= render helpers ================= */
@@ -1155,7 +1147,6 @@ function renderFormulas(){
   html += '<div class="field"><label>'+t('form_base')+'</label><select data-action="formula-level">'+levelOpts+'</select></div>';
   html += '<div class="field"><label>'+t('form_skin')+'</label><select data-action="formula-skin">'+skinOpts+'</select></div>';
   html += '</div>';
-  html += '<button type="button" class="btn btn-sm btn-ghost" data-action="open-camera" style="margin:-6px 0 18px">'+ICONS.camera+t('form_camera_btn')+'</button>';
   html += '<div class="field"><label>'+t('form_target')+'</label><select data-action="formula-target">'+targetOpts+'</select></div>';
 
   html += '<div class="eyebrow" style="margin-bottom:8px">'+t('form_recommended')+'</div>';
@@ -1356,12 +1347,13 @@ function buildChatInstructions(){
     'DATOS DEL SALÓN (hoy es '+todayISO()+'):\n'+buildSalonContext();
 }
 function closeChat(){
+  if(chatAbortCtl){ try{ chatAbortCtl.abort(); }catch(e){} chatAbortCtl = null; }
   state.chatOpen = false;
   render();
 }
 async function sendChatMessage(question){
   question = (question||'').trim();
-  if(!question || state.chatBusy) return;
+  if(!question || !sampleFn || state.chatBusy) return;
 
   var history = state.chatMessages.filter(function(m){ return !m.isError; }).slice(-8);
   state.chatMessages.push({role:'user', text:question});
@@ -1369,32 +1361,32 @@ async function sendChatMessage(question){
   state.chatBusy = true;
   render();
 
-  var apiMessages = history.map(function(m){ return {role:m.role, content:m.text}; });
-  apiMessages.push({role:'user', content:question});
+  var turns = [{role:'user', content: buildChatInstructions()}];
+  history.forEach(function(m){ turns.push({role:m.role, content:m.text}); });
+  turns.push({role:'user', content: question});
 
+  chatAbortCtl = new AbortController();
   var last = state.chatMessages[state.chatMessages.length-1];
   try{
-    var resp = await fetch(apiUrl('/chat'), {
-      method:'POST', headers:{'content-type':'application/json'},
-      body: JSON.stringify({ system: buildChatInstructions(), messages: apiMessages })
+    await sampleFn(turns, {
+      modelTier:'quick', cache:false, signal:chatAbortCtl.signal,
+      onText: function(u){ last.text = u.text; render(); }
     });
-    if(!resp.ok){
-      var errBody = await resp.json().catch(function(){ return {}; });
-      if(errBody.error === 'chat_not_configured'){
-        state.sampleAvailable = false; state.chatOpen = false;
-      } else if(errBody.error === 'rate_limited'){
-        last.text = t('chat_rate_limited'); last.isError = true;
-      } else {
-        last.text = t('chat_error_generic'); last.isError = true;
-      }
-    } else {
-      var data = await resp.json();
-      last.text = data.text || t('chat_error_generic');
-    }
+    last.streaming = false;
   }catch(e){
-    last.text = t('chat_error_generic'); last.isError = true;
+    var code = e && e.code;
+    if(code==='cancelled'){
+      last.streaming = false;
+    } else if(code==='not_granted' || code==='sampling_disabled' || code==='not_declared' || code==='capability_disabled' || code==='capability_removed'){
+      sampleFn = null; state.sampleAvailable = false; state.chatOpen = false;
+    } else if(code==='rate_limited'){
+      last.text = t('chat_rate_limited'); last.streaming = false; last.isError = true;
+    } else {
+      last.text = (e && e.text) ? e.text : t('chat_error_generic');
+      last.streaming = false; last.isError = true;
+    }
   }
-  last.streaming = false;
+  chatAbortCtl = null;
   state.chatBusy = false;
   render();
 }
@@ -1454,17 +1446,10 @@ document.addEventListener('submit', function(e){
       language: document.getElementById('ob-language').value,
       defaultThreshold: 5, brands: [], createdAt: new Date().toISOString()
     };
-    if(!SALON_SLUG){
-      SALON_SLUG = slugify(cfg.name) + '-' + Math.random().toString(36).slice(2,6);
-      Data.setConfig(cfg).then(function(){
-        location.href = '/s/' + SALON_SLUG;
-      });
-    } else {
-      Data.setConfig(cfg).then(function(){
-        state.lang = cfg.language;
-        try{ localStorage.setItem('kynb_lang', cfg.language); }catch(err){}
-      });
-    }
+    Data.setConfig(cfg).then(function(){
+      state.lang = cfg.language;
+      try{ localStorage.setItem('kynb_lang', cfg.language); }catch(err){}
+    });
   }
   if(e.target.id==='settings-form'){
     e.preventDefault();
@@ -1592,13 +1577,14 @@ document.addEventListener('click', function(e){
 /* ================= boot ================= */
 var unsubs = [];
 async function boot(){
-  if(!SALON_SLUG){
-    state.ready = true;
-    render();
-    return;
-  }
   await Data.init();
-  state.sampleAvailable = true;
+  try{
+    if(window.claude && window.claude.use){
+      var s = await window.claude.use('sample');
+      if(s){ sampleFn = s; state.sampleAvailable = true; render(); }
+    }
+  }catch(e){}
+  var gotConfigOnce = false;
   unsubs.push(Data.subscribeConfig(function(cfg){
     var firstLoad = !state.ready;
     state.config = cfg;
@@ -1611,6 +1597,10 @@ async function boot(){
           showToast(t('welcome')+' <strong>'+esc(cfg.name)+'</strong>');
         }
       }catch(e){}
+    }
+    if(cfg && !gotConfigOnce){
+      gotConfigOnce = true;
+      showToast === showToast; // noop
     }
   }));
   unsubs.push(Data.subscribeCollection('products', function(list){ state.products = list; render(); }));
