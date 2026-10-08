@@ -232,6 +232,11 @@ hr.sep{border:none; border-top:1px solid var(--line); margin:20px 0;}
   .chat-fab{bottom:calc(84px + env(safe-area-inset-bottom,0px)); right:16px; width:52px; height:52px;}
 }
 
+/* ---- Skin-tone camera ---- */
+.camera-wrap{position:relative; width:100%; max-width:360px; margin:0 auto; aspect-ratio:1; border-radius:18px; overflow:hidden; background:#000;}
+.camera-wrap video{width:100%; height:100%; object-fit:cover; transform:scaleX(-1);}
+.camera-guide{position:absolute; inset:10% 22%; border:3px solid var(--gold); border-radius:50%; pointer-events:none; box-shadow:0 0 0 2000px rgba(8,6,4,0.45);}
+
 @media (max-width:900px){
   .sidebar{display:none;}
   .topbar{display:flex;}
@@ -494,7 +499,13 @@ fr:{
   form_recommended:"Recommandé pour cette carnation",
   form_skin_tip_warm:"Les tons chauds (doré, cuivré, naturel) subliment les carnations à sous-ton chaud ou doré.",
   form_skin_tip_cool:"Les tons froids (cendré, perlé, acajou) subliment les carnations à sous-ton froid ou rosé.",
-  form_skin_tip_neutral:"Avec un sous-ton neutre, presque tout fonctionne ; naturel, perlé et acajou sont des choix sûrs et polyvalents."
+  form_skin_tip_neutral:"Avec un sous-ton neutre, presque tout fonctionne ; naturel, perlé et acajou sont des choix sûrs et polyvalents.",
+  form_camera_btn:"Détecter avec la caméra", form_camera_title:"Détection de la carnation",
+  form_camera_desc:"La couleur est analysée directement dans votre navigateur pour suggérer un sous-ton. Aucune image n'est jamais envoyée ni conservée.",
+  form_camera_guide:"Placez votre visage dans l'ovale, sous une lumière naturelle et homogène.",
+  form_camera_capture:"Capturer",
+  form_camera_permission_denied:"L'accès à la caméra n'a pas pu être accordé. Vérifiez les autorisations du navigateur, ou sélectionnez le ton manuellement.",
+  form_skin_detected:"Ton détecté : {tone}"
 },
 it:{
   tagline:"Gestione intelligente per il tuo salone",
@@ -551,7 +562,13 @@ it:{
   form_recommended:"Consigliato per questo incarnato",
   form_skin_tip_warm:"I toni caldi (dorato, rame, naturale) valorizzano gli incarnati dal sottotono caldo o dorato.",
   form_skin_tip_cool:"I toni freddi (cenere, perlato, mogano) valorizzano gli incarnati dal sottotono freddo o rosato.",
-  form_skin_tip_neutral:"Con sottotono neutro va bene quasi tutto; naturale, perlato e mogano sono scelte sicure e versatili."
+  form_skin_tip_neutral:"Con sottotono neutro va bene quasi tutto; naturale, perlato e mogano sono scelte sicure e versatili.",
+  form_camera_btn:"Rileva con la fotocamera", form_camera_title:"Rilevamento del sottotono della pelle",
+  form_camera_desc:"Il colore viene analizzato direttamente nel browser per suggerire il sottotono. Nessuna immagine viene inviata o conservata altrove.",
+  form_camera_guide:"Posizionare il viso all'interno dell'ovale, con luce naturale e uniforme.",
+  form_camera_capture:"Acquisisci",
+  form_camera_permission_denied:"Non è stato possibile accedere alla fotocamera. Verificare le autorizzazioni del browser, oppure selezionare il tono manualmente.",
+  form_skin_detected:"Tono rilevato: {tone}"
 }
 };
 var LOCALE_MAP = {es:'es-ES', en:'en-US', pt:'pt-BR', fr:'fr-FR', it:'it-IT'};
@@ -640,7 +657,8 @@ var state = {
   tab:'dashboard', modal:null, toast:null, repRange:'month', agTab:'appts',
   lang: null,
   sampleAvailable:false, chatOpen:false, chatBusy:false, chatMessages:[],
-  formulaLevel:6, formulaTarget:'ash', formulaSkin:'neutral'
+  formulaLevel:6, formulaTarget:'ash', formulaSkin:'neutral',
+  formulaCameraOpen:false, formulaCameraError:null
 };
 var SALON_SLUG = (function(){
   var m = location.pathname.match(/^\/s\/([a-z0-9-]+)/i);
@@ -865,12 +883,17 @@ function renderApp(){
   if(state.sampleAvailable && !state.chatOpen){ html += '<button class="chat-fab" data-action="open-chat" aria-label="'+esc(t('chat_title'))+'">'+ICONS.chat+'</button>'; }
   if(state.modal){ html += renderModal(); }
   if(state.chatOpen){ html += renderChatPanel(); }
+  if(state.formulaCameraOpen){ html += renderCameraModal(); }
   if(state.toast){ html += '<div class="toast">'+ICONS.bell+' '+state.toast+'</div>'; }
 
   root.innerHTML = html;
   if(state.chatOpen){
     var box = root.querySelector('.chat-messages');
     if(box) box.scrollTop = box.scrollHeight;
+  }
+  if(state.formulaCameraOpen && cameraStream){
+    var video = document.getElementById('skin-camera-video');
+    if(video && video.srcObject !== cameraStream){ video.srcObject = cameraStream; }
   }
 }
 function render(){
@@ -1183,6 +1206,78 @@ function renderFormulas(){
   html += '<p class="empty-note">'+t('form_disclaimer')+'</p>';
   html += '</div>';
   return html;
+}
+
+/* ================= skin-tone camera detection ================= */
+var cameraStream = null;
+function renderCameraModal(){
+  var body = '<h3>'+t('form_camera_title')+'</h3>';
+  body += '<p class="modal-sub">'+t('form_camera_desc')+'</p>';
+  body += '<div class="camera-wrap"><video id="skin-camera-video" autoplay playsinline muted></video><div class="camera-guide"></div></div>';
+  body += '<p style="font-size:12.5px;color:var(--text-faint);margin-top:12px;text-align:center">'+t('form_camera_guide')+'</p>';
+  if(state.formulaCameraError){
+    body += '<p style="font-size:13px;color:var(--bad);margin-top:10px;text-align:center">'+t('form_camera_permission_denied')+'</p>';
+  }
+  body += '<div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-camera">'+t('common_cancel')+'</button>'+
+    (state.formulaCameraError ? '' : '<button type="button" class="btn btn-primary" data-action="capture-skin">'+t('form_camera_capture')+'</button>')+
+    '</div>';
+  return '<div class="modal-back" data-action="camera-back"><div class="modal" data-stop="1">'+body+'</div></div>';
+}
+async function openCameraModal(){
+  state.formulaCameraOpen = true;
+  state.formulaCameraError = null;
+  render();
+  try{
+    cameraStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'}, audio:false});
+    var video = document.getElementById('skin-camera-video');
+    if(video){ video.srcObject = cameraStream; }
+  }catch(e){
+    state.formulaCameraError = 'denied';
+    render();
+  }
+}
+function closeCameraModal(){
+  if(cameraStream){
+    cameraStream.getTracks().forEach(function(tr){ tr.stop(); });
+    cameraStream = null;
+  }
+  state.formulaCameraOpen = false;
+  render();
+}
+function classifySkinUndertone(r,g,b){
+  var rr=r/255, gg=g/255, bb=b/255;
+  var max=Math.max(rr,gg,bb), min=Math.min(rr,gg,bb), d=max-min;
+  var h=0;
+  if(d!==0){
+    if(max===rr) h = 60*(((gg-bb)/d)%6);
+    else if(max===gg) h = 60*(((bb-rr)/d)+2);
+    else h = 60*(((rr-gg)/d)+4);
+  }
+  if(h<0) h+=360;
+  if(h<=12 || h>=348) return 'cool';
+  if(h<=22) return 'neutral';
+  if(h<=50) return 'warm';
+  return 'neutral';
+}
+function captureSkinTone(){
+  var video = document.getElementById('skin-camera-video');
+  if(!video || !video.videoWidth) return;
+  var size = 120;
+  var canvas = document.createElement('canvas');
+  canvas.width = size; canvas.height = size;
+  var ctx = canvas.getContext('2d');
+  var vw = video.videoWidth, vh = video.videoHeight;
+  var cropSize = Math.min(vw, vh) * 0.32;
+  var sx = (vw - cropSize)/2, sy = (vh - cropSize)/2 - vh*0.04;
+  ctx.drawImage(video, sx, sy, cropSize, cropSize, 0, 0, size, size);
+  var data = ctx.getImageData(0,0,size,size).data;
+  var r=0,g=0,b=0,n=0;
+  for(var i=0;i<data.length;i+=4){ r+=data[i]; g+=data[i+1]; b+=data[i+2]; n++; }
+  r/=n; g/=n; b/=n;
+  var tone = classifySkinUndertone(r,g,b);
+  closeCameraModal();
+  state.formulaSkin = tone;
+  showToast(t('form_skin_detected', {tone: t('form_skin_'+tone)}));
 }
 
 function renderSettings(){
@@ -1587,6 +1682,10 @@ document.addEventListener('click', function(e){
   }
   else if(action==='close-chat'){ closeChat(); }
   else if(action==='chat-back'){ if(actEl!==e.target) return; closeChat(); }
+  else if(action==='open-camera'){ openCameraModal(); }
+  else if(action==='close-camera'){ closeCameraModal(); }
+  else if(action==='camera-back'){ if(actEl!==e.target) return; closeCameraModal(); }
+  else if(action==='capture-skin'){ captureSkinTone(); }
 });
 
 /* ================= boot ================= */
