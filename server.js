@@ -131,47 +131,88 @@ app.delete('/api/:slug/:collection/:id', async (req, res) => {
   }
 });
 
-// ---- chat assistant (calls Claude via the user's own Anthropic API key) ----
+// ---- chat assistant ----
+// Tries Gemini first (GEMINI_API_KEY), then falls back to Anthropic
+// (ANTHROPIC_API_KEY) if that's the one configured instead.
+async function callGemini(apiKey, system, messages) {
+  const contents = messages.map((m) => ({
+    role: m.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: m.content }]
+  }));
+  const upstream = await fetch(
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' +
+      encodeURIComponent(apiKey),
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        contents,
+        systemInstruction: system ? { parts: [{ text: system }] } : undefined,
+        generationConfig: { maxOutputTokens: 700 }
+      })
+    }
+  );
+  if (upstream.status === 429) return { rateLimited: true };
+  if (!upstream.ok) {
+    const errText = await upstream.text();
+    console.error('Gemini API error', upstream.status, errText);
+    return { error: true };
+  }
+  const data = await upstream.json();
+  const parts = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [];
+  const text = parts.map((p) => p.text || '').join('\n');
+  return { text };
+}
+
+async function callAnthropic(apiKey, system, messages) {
+  const upstream = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-5',
+      max_tokens: 700,
+      system: system || undefined,
+      messages
+    })
+  });
+  if (upstream.status === 429) return { rateLimited: true };
+  if (!upstream.ok) {
+    const errText = await upstream.text();
+    console.error('Anthropic API error', upstream.status, errText);
+    return { error: true };
+  }
+  const data = await upstream.json();
+  const text = (data.content || [])
+    .filter((b) => b.type === 'text')
+    .map((b) => b.text)
+    .join('\n');
+  return { text };
+}
+
 app.post('/api/:slug/chat', async (req, res) => {
   try {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) return res.status(503).json({ error: 'chat_not_configured' });
+    const geminiKey = process.env.GEMINI_API_KEY;
+    const anthropicKey = process.env.ANTHROPIC_API_KEY;
+    if (!geminiKey && !anthropicKey) {
+      return res.status(503).json({ error: 'chat_not_configured' });
+    }
 
     const { system, messages } = req.body || {};
     if (!Array.isArray(messages) || !messages.length) {
       return res.status(400).json({ error: 'invalid_request' });
     }
 
-    const upstream = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-5',
-        max_tokens: 700,
-        system: system || undefined,
-        messages
-      })
-    });
+    const result = geminiKey
+      ? await callGemini(geminiKey, system, messages)
+      : await callAnthropic(anthropicKey, system, messages);
 
-    if (upstream.status === 429) {
-      return res.status(429).json({ error: 'rate_limited' });
-    }
-    if (!upstream.ok) {
-      const errText = await upstream.text();
-      console.error('Anthropic API error', upstream.status, errText);
-      return res.status(502).json({ error: 'upstream_error' });
-    }
-
-    const data = await upstream.json();
-    const text = (data.content || [])
-      .filter((b) => b.type === 'text')
-      .map((b) => b.text)
-      .join('\n');
-    res.json({ text: text || '' });
+    if (result.rateLimited) return res.status(429).json({ error: 'rate_limited' });
+    if (result.error) return res.status(502).json({ error: 'upstream_error' });
+    res.json({ text: result.text || '' });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'server_error' });
