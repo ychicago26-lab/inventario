@@ -981,7 +981,6 @@ function renderApp(){
 function render(){
   var active = document.activeElement;
   var activeId = active && active.id;
-  var activeValue = (active && 'value' in active) ? active.value : null;
   var selStart = null, selEnd = null;
   try{
     if(active && typeof active.selectionStart === 'number'){
@@ -989,12 +988,24 @@ function render(){
     }
   }catch(e){ /* inputs like type=number/color don't support selection */ }
 
+  // Preserve every field's value across a background refresh, not just the
+  // focused one — a form with two fields (e.g. current/new password) would
+  // otherwise lose whichever one wasn't focused the instant the refresh landed.
+  var preserved = {};
+  document.querySelectorAll('input[id], textarea[id], select[id]').forEach(function(el){
+    preserved[el.id] = el.value;
+  });
+
   renderApp();
+
+  Object.keys(preserved).forEach(function(id){
+    var el = document.getElementById(id);
+    if(el && preserved[id]) el.value = preserved[id];
+  });
 
   if(activeId){
     var el = document.getElementById(activeId);
     if(el){
-      if(activeValue!=null) el.value = activeValue;
       el.focus();
       if(selStart!=null && el.setSelectionRange){
         try{ el.setSelectionRange(selStart, selEnd); }catch(e){}
