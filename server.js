@@ -98,7 +98,7 @@ app.get('/api/:slug/public', async (req, res) => {
   try {
     const cfg = await getConfig(req.params.slug);
     if (!cfg) return res.json({ exists: false });
-    res.json({ exists: true, name: cfg.name, language: cfg.language });
+    res.json({ exists: true, name: cfg.name, language: cfg.language, hasPassword: !!cfg.passwordHash });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'server_error' });
@@ -107,12 +107,24 @@ app.get('/api/:slug/public', async (req, res) => {
 
 app.post('/api/:slug/login', async (req, res) => {
   try {
-    const cfg = await getConfig(req.params.slug);
+    const slug = req.params.slug;
+    const cfg = await getConfig(slug);
     const { password } = req.body || {};
-    if (!cfg || !password || !verifyPassword(password, cfg.passwordHash)) {
+    if (!cfg || !password) {
       return res.status(401).json({ error: 'invalid_password' });
     }
-    res.json({ token: signToken(req.params.slug) });
+    if (!cfg.passwordHash) {
+      // Salon created before password protection existed: whoever holds
+      // this private link sets the password now, on this first access.
+      if (password.length < 4) return res.status(400).json({ error: 'invalid_request' });
+      cfg.passwordHash = hashPassword(password);
+      await upsertDoc(slug, 'config', 'main', cfg);
+      return res.json({ token: signToken(slug) });
+    }
+    if (!verifyPassword(password, cfg.passwordHash)) {
+      return res.status(401).json({ error: 'invalid_password' });
+    }
+    res.json({ token: signToken(slug) });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'server_error' });

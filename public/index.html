@@ -277,7 +277,9 @@ es:{
   onb_name:"Nombre del salón", onb_country:"País", onb_language:"Idioma", onb_currency:"Moneda", onb_start:"Comenzar",
   onb_password:"Contraseña", onb_password_confirm:"Confirmar contraseña",
   onb_password_hint:"La necesitará para volver a entrar a este salón. Mínimo 4 caracteres.",
-  auth_sub:"Ingrese la contraseña de este salón para continuar.", auth_password:"Contraseña", auth_submit:"Entrar",
+  auth_sub:"Ingrese la contraseña de este salón para continuar.",
+  auth_sub_first:"Este salón todavía no tiene contraseña. Cree una ahora para proteger su información.",
+  auth_password:"Contraseña", auth_submit:"Entrar",
   auth_wrong_password:"Contraseña incorrecta.", auth_password_mismatch:"Las contraseñas no coinciden.",
   set_security:"Seguridad", set_current_password:"Contraseña actual", set_new_password:"Nueva contraseña",
   set_change_password:"Cambiar contraseña", set_password_changed:"Contraseña actualizada",
@@ -346,7 +348,9 @@ en:{
   onb_name:"Salon name", onb_country:"Country", onb_language:"Language", onb_currency:"Currency", onb_start:"Get started",
   onb_password:"Password", onb_password_confirm:"Confirm password",
   onb_password_hint:"You will need it to sign back in to this salon. Minimum 4 characters.",
-  auth_sub:"Enter this salon's password to continue.", auth_password:"Password", auth_submit:"Sign in",
+  auth_sub:"Enter this salon's password to continue.",
+  auth_sub_first:"This salon doesn't have a password yet. Create one now to protect its information.",
+  auth_password:"Password", auth_submit:"Sign in",
   auth_wrong_password:"Incorrect password.", auth_password_mismatch:"Passwords do not match.",
   set_security:"Security", set_current_password:"Current password", set_new_password:"New password",
   set_change_password:"Change password", set_password_changed:"Password updated",
@@ -415,7 +419,9 @@ pt:{
   onb_name:"Nome do salão", onb_country:"País", onb_language:"Idioma", onb_currency:"Moeda", onb_start:"Começar",
   onb_password:"Senha", onb_password_confirm:"Confirmar senha",
   onb_password_hint:"Vai precisar dela para entrar de novo neste salão. Mínimo de 4 caracteres.",
-  auth_sub:"Digite a senha deste salão para continuar.", auth_password:"Senha", auth_submit:"Entrar",
+  auth_sub:"Digite a senha deste salão para continuar.",
+  auth_sub_first:"Este salão ainda não tem senha. Crie uma agora para proteger suas informações.",
+  auth_password:"Senha", auth_submit:"Entrar",
   auth_wrong_password:"Senha incorreta.", auth_password_mismatch:"As senhas não coincidem.",
   set_security:"Segurança", set_current_password:"Senha atual", set_new_password:"Nova senha",
   set_change_password:"Alterar senha", set_password_changed:"Senha atualizada",
@@ -484,7 +490,9 @@ fr:{
   onb_name:"Nom du salon", onb_country:"Pays", onb_language:"Langue", onb_currency:"Devise", onb_start:"Commencer",
   onb_password:"Mot de passe", onb_password_confirm:"Confirmer le mot de passe",
   onb_password_hint:"Il vous servira pour revenir sur ce salon. Quatre caractères minimum.",
-  auth_sub:"Saisissez le mot de passe de ce salon pour continuer.", auth_password:"Mot de passe", auth_submit:"Se connecter",
+  auth_sub:"Saisissez le mot de passe de ce salon pour continuer.",
+  auth_sub_first:"Ce salon n'a pas encore de mot de passe. Créez-en un maintenant pour protéger ses informations.",
+  auth_password:"Mot de passe", auth_submit:"Se connecter",
   auth_wrong_password:"Mot de passe incorrect.", auth_password_mismatch:"Les mots de passe ne correspondent pas.",
   set_security:"Sécurité", set_current_password:"Mot de passe actuel", set_new_password:"Nouveau mot de passe",
   set_change_password:"Changer le mot de passe", set_password_changed:"Mot de passe mis à jour",
@@ -553,7 +561,9 @@ it:{
   onb_name:"Nome del salone", onb_country:"Paese", onb_language:"Lingua", onb_currency:"Valuta", onb_start:"Inizia",
   onb_password:"Password", onb_password_confirm:"Conferma password",
   onb_password_hint:"Servirà per accedere di nuovo a questo salone. Minimo 4 caratteri.",
-  auth_sub:"Inserisci la password di questo salone per continuare.", auth_password:"Password", auth_submit:"Accedi",
+  auth_sub:"Inserisci la password di questo salone per continuare.",
+  auth_sub_first:"Questo salone non ha ancora una password. Creane una ora per proteggere le sue informazioni.",
+  auth_password:"Password", auth_submit:"Accedi",
   auth_wrong_password:"Password errata.", auth_password_mismatch:"Le password non coincidono.",
   set_security:"Sicurezza", set_current_password:"Password attuale", set_new_password:"Nuova password",
   set_change_password:"Cambia password", set_password_changed:"Password aggiornata",
@@ -700,7 +710,7 @@ var state = {
   sampleAvailable:false, chatOpen:false, chatBusy:false, chatMessages:[],
   formulaLevel:6, formulaTarget:'ash', formulaSkin:'neutral',
   formulaCameraOpen:false, formulaCameraError:null,
-  authRequired:false, authSalonName:'', authBusy:false, authError:null
+  authRequired:false, authSalonName:'', authHasPassword:true, authBusy:false, authError:null
 };
 var SALON_SLUG = (function(){
   var m = location.pathname.match(/^\/s\/([a-z0-9-]+)/i);
@@ -1023,12 +1033,14 @@ function renderOnboarding(){
 }
 
 function renderLogin(){
+  var firstTime = !state.authHasPassword;
   return '<div class="onboard-wrap"><div class="onboard-card">'+
-    '<div class="onboard-logo">'+ICONS.leaf+'<h1>'+esc(state.authSalonName||'KY Nature Beauty')+'</h1><p>'+t('auth_sub')+'</p></div>'+
+    '<div class="onboard-logo">'+ICONS.leaf+'<h1>'+esc(state.authSalonName||'KY Nature Beauty')+'</h1><p>'+(firstTime?t('auth_sub_first'):t('auth_sub'))+'</p></div>'+
     '<form id="login-form">'+
-      '<div class="field"><label>'+t('auth_password')+'</label><input required type="password" id="auth-password" autofocus></div>'+
+      '<div class="field"><label>'+(firstTime?t('onb_password'):t('auth_password'))+'</label><input required type="password" minlength="4" id="auth-password" autofocus></div>'+
+      (firstTime?'<div class="field"><label>'+t('onb_password_confirm')+'</label><input required type="password" minlength="4" id="auth-password-confirm"></div>':'')+
       (state.authError?'<p style="font-size:13px;color:var(--bad);margin-bottom:10px">'+esc(state.authError)+'</p>':'')+
-      '<button type="submit" class="btn btn-primary" style="width:100%; margin-top:6px;"'+(state.authBusy?' disabled':'')+'>'+t('auth_submit')+'</button>'+
+      '<button type="submit" class="btn btn-primary" style="width:100%; margin-top:6px;"'+(state.authBusy?' disabled':'')+'>'+(firstTime?t('onb_start'):t('auth_submit'))+'</button>'+
     '</form>'+
   '</div></div>';
 }
@@ -1699,7 +1711,15 @@ document.addEventListener('submit', function(e){
   }
   if(e.target.id==='login-form'){
     e.preventDefault();
-    submitLogin(document.getElementById('auth-password').value);
+    var pw = document.getElementById('auth-password').value;
+    if(!state.authHasPassword){
+      var pwConfirm = document.getElementById('auth-password-confirm');
+      if(pwConfirm && pw !== pwConfirm.value){
+        state.authError = t('auth_password_mismatch'); render();
+        return;
+      }
+    }
+    submitLogin(pw);
   }
   if(e.target.id==='settings-form'){
     e.preventDefault();
@@ -1913,6 +1933,7 @@ async function boot(){
   }
 
   state.authSalonName = pub.name;
+  state.authHasPassword = !!pub.hasPassword;
   if(!AUTH_TOKEN){
     state.ready = true;
     state.authRequired = true;
