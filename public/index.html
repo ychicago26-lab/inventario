@@ -311,6 +311,7 @@ es:{
   set_country:"País", set_currency:"Símbolo de moneda", set_language:"Idioma", set_threshold:"Aviso de stock bajo por defecto",
   set_brands:"Marcas frecuentes", set_brands_hint:"Se sugerirán al agregar productos.", set_brand_ph:"Ej. L'Oréal",
   set_services:"Servicios ofrecidos", set_services_hint:"Se sugerirán al agendar una cita y el asistente los conocerá.", set_service_ph:"Ej. Corte de cabello mujer",
+  set_services_note:"Detalles adicionales de los servicios", set_services_note_hint:"Explique aquí cómo se realizan sus servicios; el asistente lo usará para responder preguntas de las clientas.", set_services_note_ph:"Ej. Los faciales se realizan de acuerdo a las necesidades de cada piel...",
   set_saved:"Cambios guardados",
   unit_ml:"ml", unit_g:"g", unit_un:"unidades",
   chat_title:"Pregúntale a tu salón", chat_placeholder:"Escribe tu pregunta…",
@@ -383,6 +384,7 @@ en:{
   set_country:"Country", set_currency:"Currency symbol", set_language:"Language", set_threshold:"Default low-stock alert",
   set_brands:"Frequent brands", set_brands_hint:"Suggested when adding products.", set_brand_ph:"E.g. L'Oréal",
   set_services:"Services offered", set_services_hint:"Suggested when booking an appointment, and known to the assistant.", set_service_ph:"E.g. Women's haircut",
+  set_services_note:"Additional service details", set_services_note_hint:"Describe here how your services are performed; the assistant will use this to answer clients' questions.", set_services_note_ph:"E.g. Facials are tailored to each skin's needs...",
   set_saved:"Changes saved",
   unit_ml:"ml", unit_g:"g", unit_un:"units",
   chat_title:"Ask your salon", chat_placeholder:"Type your question…",
@@ -455,6 +457,7 @@ pt:{
   set_country:"País", set_currency:"Símbolo da moeda", set_language:"Idioma", set_threshold:"Alerta de estoque baixo padrão",
   set_brands:"Marcas frequentes", set_brands_hint:"Serão sugeridas ao adicionar produtos.", set_brand_ph:"Ex. L'Oréal",
   set_services:"Serviços oferecidos", set_services_hint:"Serão sugeridos ao agendar e o assistente os conhecerá.", set_service_ph:"Ex. Corte de cabelo feminino",
+  set_services_note:"Detalhes adicionais dos serviços", set_services_note_hint:"Descreva aqui como seus serviços são realizados; o assistente usará isso para responder às clientes.", set_services_note_ph:"Ex. Os faciais são feitos de acordo com a necessidade de cada pele...",
   set_saved:"Alterações salvas",
   unit_ml:"ml", unit_g:"g", unit_un:"unidades",
   chat_title:"Pergunte ao seu salão", chat_placeholder:"Digite sua pergunta…",
@@ -527,6 +530,7 @@ fr:{
   set_country:"Pays", set_currency:"Symbole monétaire", set_language:"Langue", set_threshold:"Alerte de stock faible par défaut",
   set_brands:"Marques fréquentes", set_brands_hint:"Suggérées lors de l'ajout de produits.", set_brand_ph:"Ex. L'Oréal",
   set_services:"Services proposés", set_services_hint:"Suggérés lors de la prise de rendez-vous, et connus de l'assistant.", set_service_ph:"Ex. Coupe femme",
+  set_services_note:"Détails supplémentaires des services", set_services_note_hint:"Décrivez ici comment vos services sont réalisés ; l'assistant s'en servira pour répondre aux clientes.", set_services_note_ph:"Ex. Les soins du visage sont adaptés aux besoins de chaque peau...",
   set_saved:"Modifications enregistrées",
   unit_ml:"ml", unit_g:"g", unit_un:"unités",
   chat_title:"Interrogez votre salon", chat_placeholder:"Tapez votre question…",
@@ -599,6 +603,7 @@ it:{
   set_country:"Paese", set_currency:"Simbolo valuta", set_language:"Lingua", set_threshold:"Avviso scorte basse predefinito",
   set_brands:"Marche frequenti", set_brands_hint:"Suggerite quando aggiungi prodotti.", set_brand_ph:"Es. L'Oréal",
   set_services:"Servizi offerti", set_services_hint:"Suggeriti quando prenoti un appuntamento, e noti all'assistente.", set_service_ph:"Es. Taglio donna",
+  set_services_note:"Dettagli aggiuntivi dei servizi", set_services_note_hint:"Descrivi qui come vengono eseguiti i tuoi servizi; l'assistente lo userà per rispondere alle clienti.", set_services_note_ph:"Es. I trattamenti viso sono realizzati in base alle esigenze di ogni pelle...",
   set_saved:"Modifiche salvate",
   unit_ml:"ml", unit_g:"g", unit_un:"unità",
   chat_title:"Chiedi al tuo salone", chat_placeholder:"Scrivi la tua domanda…",
@@ -1468,6 +1473,12 @@ function renderSettings(){
   html += '<p style="color:var(--text-dim);font-size:13px;margin-bottom:12px">'+t('set_services_hint')+'</p>';
   html += '<div class="tag-list" style="margin-bottom:14px">'+services.map(function(s,i){ return '<span class="tag-chip">'+esc(s)+'<button data-action="remove-service" data-idx="'+i+'">'+ICONS.close+'</button></span>'; }).join('')+'</div>';
   html += '<form id="service-form" style="display:flex;gap:8px"><input id="new-service" placeholder="'+t('set_service_ph')+'" style="flex:1"><button class="btn btn-ghost" type="submit">'+ICONS.plus+t('common_add')+'</button></form>';
+  html += '<hr class="sep">';
+  html += '<form id="services-note-form">';
+  html += '<div class="field"><label>'+t('set_services_note')+'</label><textarea id="services-note" rows="4" placeholder="'+t('set_services_note_ph')+'">'+esc(cfg.servicesNote||'')+'</textarea></div>';
+  html += '<p style="color:var(--text-dim);font-size:13px;margin:-8px 0 12px">'+t('set_services_note_hint')+'</p>';
+  html += '<button type="submit" class="btn btn-primary">'+t('common_save')+'</button>';
+  html += '</form>';
   html += '</div>';
 
   html += '<div class="card" style="max-width:560px;margin-top:18px">';
@@ -1575,6 +1586,7 @@ function buildSalonContext(){
   var svcList = cfg.services || DEFAULT_SERVICES[lang] || DEFAULT_SERVICES.es;
   if(svcList.length){ svcList.forEach(function(s){ lines.push('- '+s); }); }
   else{ lines.push('- (sin servicios configurados)'); }
+  if(cfg.servicesNote){ lines.push(''); lines.push('CÓMO SE REALIZAN LOS SERVICIOS: '+cfg.servicesNote); }
   lines.push('');
   lines.push('INVENTARIO ('+state.products.length+' productos):');
   if(!state.products.length){ lines.push('- (sin productos registrados)'); }
@@ -1791,6 +1803,13 @@ document.addEventListener('submit', function(e){
       if(services.indexOf(svcVal)===-1) services.push(svcVal);
       Data.setConfig(Object.assign({}, state.config, {services:services}));
     }
+  }
+  if(e.target.id==='services-note-form'){
+    e.preventDefault();
+    var note = document.getElementById('services-note').value.trim();
+    Data.setConfig(Object.assign({}, state.config, {servicesNote:note})).then(function(){
+      showToast(t('set_saved'));
+    });
   }
   if(e.target.id==='password-form'){
     e.preventDefault();
