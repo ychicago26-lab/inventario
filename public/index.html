@@ -1532,7 +1532,7 @@ function renderModal(){
       '<div class="row2"><div class="field"><label>'+t('ag_appt_date')+'</label><input id="af-date" type="date" value="'+(a.date||todayISO())+'" required></div>'+
       '<div class="field"><label>'+t('ag_appt_time')+'</label><input id="af-time" type="time" value="'+(a.time||'10:00')+'"></div></div>'+
       '<div class="field"><label>'+t('ag_appt_service')+'</label><input id="af-service" value="'+esc(a.service||'')+'" list="service-list" placeholder="Ej. Tinte + corte"></div>'+
-      '<datalist id="service-list">'+(state.config.services||[]).map(function(s){ return '<option value="'+esc(s)+'">'; }).join('')+'</datalist>'+
+      '<datalist id="service-list">'+(state.config.services||DEFAULT_SERVICES[getLang()]||DEFAULT_SERVICES.es).map(function(s){ return '<option value="'+esc(s)+'">'; }).join('')+'</datalist>'+
       '<div class="field"><label>'+t('ag_appt_notes')+'</label><textarea id="af-notes" rows="3">'+esc(a.notes||'')+'</textarea></div>'+
       '<div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">'+t('common_cancel')+'</button><button type="submit" class="btn btn-primary">'+t('common_save')+'</button></div>'+
       '</form>';
@@ -1572,7 +1572,7 @@ function buildSalonContext(){
   lines.push('Salón: '+cfg.name+' ('+(COUNTRY_NAMES[lang][cfg.country]||cfg.country)+')');
   lines.push('');
   lines.push('SERVICIOS QUE OFRECE EL SALÓN:');
-  var svcList = cfg.services || [];
+  var svcList = cfg.services || DEFAULT_SERVICES[lang] || DEFAULT_SERVICES.es;
   if(svcList.length){ svcList.forEach(function(s){ lines.push('- '+s); }); }
   else{ lines.push('- (sin servicios configurados)'); }
   lines.push('');
