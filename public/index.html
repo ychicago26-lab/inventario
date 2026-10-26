@@ -1799,7 +1799,7 @@ document.addEventListener('submit', function(e){
     var svcInp = document.getElementById('new-service');
     var svcVal = svcInp.value.trim();
     if(svcVal){
-      var services = (state.config.services||[]).slice();
+      var services = (state.config.services||DEFAULT_SERVICES[getLang()]||DEFAULT_SERVICES.es).slice();
       if(services.indexOf(svcVal)===-1) services.push(svcVal);
       Data.setConfig(Object.assign({}, state.config, {services:services}));
     }
@@ -1919,7 +1919,7 @@ document.addEventListener('click', function(e){
   else if(action==='delete-appt'){ if(confirm(t('common_delete_q'))){ Data.deleteDoc('appointments', actEl.getAttribute('data-id')); } }
   else if(action==='close-modal' || action==='modal-back'){ if(action==='modal-back' && actEl!==e.target) return; state.modal=null; render(); }
   else if(action==='remove-brand'){ var idx=parseInt(actEl.getAttribute('data-idx'),10); var brands=(state.config.brands||[]).slice(); brands.splice(idx,1); Data.setConfig(Object.assign({}, state.config, {brands:brands})); }
-  else if(action==='remove-service'){ var sidx=parseInt(actEl.getAttribute('data-idx'),10); var services=(state.config.services||[]).slice(); services.splice(sidx,1); Data.setConfig(Object.assign({}, state.config, {services:services})); }
+  else if(action==='remove-service'){ var sidx=parseInt(actEl.getAttribute('data-idx'),10); var services=(state.config.services||DEFAULT_SERVICES[getLang()]||DEFAULT_SERVICES.es).slice(); services.splice(sidx,1); Data.setConfig(Object.assign({}, state.config, {services:services})); }
   else if(action==='formula-pick'){ state.formulaTarget = actEl.getAttribute('data-key'); render(); }
   else if(action==='open-chat'){
     state.chatOpen = true; render();
