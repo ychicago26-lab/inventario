@@ -317,6 +317,10 @@ es:{
   chat_title:"Pregúntale a tu salón", chat_placeholder:"Escribe tu pregunta…",
   chat_empty:"Pregúntame sobre tu inventario, ventas, clientas o agenda.",
   chat_rate_limited:"Hay mucho tráfico ahora mismo. Inténtalo de nuevo en un momento.",
+  chat_services_list_prefix:"Ofrecemos:", chat_low_stock_prefix:"Se está agotando:",
+  chat_stock_ok:"Todo el inventario está en buen nivel por ahora.",
+  chat_sales_summary:"Ventas de la semana: {week}. Ventas del mes: {month}.",
+  chat_local_joke:"Esa todavía no la sé responder a fondo, pero aquí va un chiste: ¿por qué el peine siempre anda triste? Porque lo dejan hecho un lío. Mientras tanto, pregúntame sobre servicios, faciales, cortes, masajes, uñas, inventario o ventas.",
   chat_error_generic:"Uy, se me enredó el secador. ¿Puedes intentarlo de nuevo?",
   nav_formulas:"Fórmulas", form_sub:"Guía de combinaciones de tono y fórmulas de coloración",
   form_base:"Color base actual", form_target:"Resultado deseado", form_before:"Antes", form_after:"Resultado",
@@ -390,6 +394,10 @@ en:{
   chat_title:"Ask your salon", chat_placeholder:"Type your question…",
   chat_empty:"Ask me about your inventory, sales, clients or agenda.",
   chat_rate_limited:"Lots of traffic right now. Please try again in a moment.",
+  chat_services_list_prefix:"We offer:", chat_low_stock_prefix:"Running low on:",
+  chat_stock_ok:"All inventory is at a good level right now.",
+  chat_sales_summary:"Sales this week: {week}. Sales this month: {month}.",
+  chat_local_joke:"I can't fully answer that one yet, but here's a joke: why is the comb always sad? Because it's always left in a tangle. Meanwhile, ask me about services, facials, haircuts, massages, nails, inventory or sales.",
   chat_error_generic:"Oops, I got my blow-dryer cord tangled. Please try again.",
   nav_formulas:"Formulas", form_sub:"Tone combination guide and coloring formulas",
   form_base:"Current base color", form_target:"Desired result", form_before:"Before", form_after:"Result",
@@ -463,6 +471,10 @@ pt:{
   chat_title:"Pergunte ao seu salão", chat_placeholder:"Digite sua pergunta…",
   chat_empty:"Pergunte sobre seu estoque, vendas, clientes ou agenda.",
   chat_rate_limited:"Muito tráfego agora. Tente novamente em instantes.",
+  chat_services_list_prefix:"Oferecemos:", chat_low_stock_prefix:"Estamos ficando sem:",
+  chat_stock_ok:"Todo o estoque está em bom nível por enquanto.",
+  chat_sales_summary:"Vendas da semana: {week}. Vendas do mês: {month}.",
+  chat_local_joke:"Essa ainda não sei responder bem, mas aqui vai uma piada: por que o pente está sempre triste? Porque sempre o deixam todo embaraçado. Enquanto isso, me pergunte sobre serviços, faciais, cortes, massagens, unhas, estoque ou vendas.",
   chat_error_generic:"Ops, enrolei o fio do secador. Tente novamente.",
   nav_formulas:"Fórmulas", form_sub:"Guia de combinações de tom e fórmulas de coloração",
   form_base:"Cor base atual", form_target:"Resultado desejado", form_before:"Antes", form_after:"Resultado",
@@ -536,6 +548,10 @@ fr:{
   chat_title:"Interrogez votre salon", chat_placeholder:"Tapez votre question…",
   chat_empty:"Posez-moi des questions sur votre inventaire, vos ventes, vos clientes ou votre agenda.",
   chat_rate_limited:"Beaucoup de trafic en ce moment. Réessayez dans un instant.",
+  chat_services_list_prefix:"Nous proposons :", chat_low_stock_prefix:"Il commence à manquer :",
+  chat_stock_ok:"Tout le stock est à un bon niveau pour le moment.",
+  chat_sales_summary:"Ventes de la semaine : {week}. Ventes du mois : {month}.",
+  chat_local_joke:"Je ne sais pas encore bien répondre à ça, alors voici une blague : pourquoi le peigne est-il toujours triste ? Parce qu'on le laisse toujours tout emmêlé. En attendant, demandez-moi les services, les soins du visage, les coupes, les massages, les ongles, le stock ou les ventes.",
   chat_error_generic:"Oups, j'ai emmêlé le fil du sèche-cheveux. Réessayez.",
   nav_formulas:"Formules", form_sub:"Guide des combinaisons de tons et formules de coloration",
   form_base:"Couleur de base actuelle", form_target:"Résultat souhaité", form_before:"Avant", form_after:"Résultat",
@@ -609,6 +625,10 @@ it:{
   chat_title:"Chiedi al tuo salone", chat_placeholder:"Scrivi la tua domanda…",
   chat_empty:"Chiedimi del tuo magazzino, delle vendite, delle clienti o dell'agenda.",
   chat_rate_limited:"C'è molto traffico ora. Riprova tra un momento.",
+  chat_services_list_prefix:"Offriamo:", chat_low_stock_prefix:"Si sta esaurendo:",
+  chat_stock_ok:"Tutto il magazzino è a buon livello per ora.",
+  chat_sales_summary:"Vendite della settimana: {week}. Vendite del mese: {month}.",
+  chat_local_joke:"Questa non la so ancora rispondere bene, ma ecco una barzelletta: perché il pettine è sempre triste? Perché lo lasciano sempre tutto aggrovigliato. Nel frattempo, chiedimi dei servizi, trattamenti viso, tagli, massaggi, unghie, magazzino o vendite.",
   chat_error_generic:"Ops, mi si è aggrovigliato il phon. Riprova.",
   nav_formulas:"Formule", form_sub:"Guida alle combinazioni di tono e formule di colorazione",
   form_base:"Colore di base attuale", form_target:"Risultato desiderato", form_before:"Prima", form_after:"Risultato",
@@ -1641,6 +1661,48 @@ function closeChat(){
   state.chatOpen = false;
   render();
 }
+function localFallbackAnswer(question){
+  var lang = getLang();
+  var q = (question||'').toLowerCase();
+  var cfg = state.config;
+  var note = cfg.servicesNote || '';
+  var sentences = note.split(/(?<=[.!?])\s+/).filter(function(s){ return s.trim(); });
+  function contains(words){ return words.some(function(w){ return q.indexOf(w)>=0; }); }
+  function sentencesMatching(words){
+    return sentences.filter(function(s){
+      var sl = s.toLowerCase();
+      return words.some(function(w){ return sl.indexOf(w)>=0; });
+    });
+  }
+  var topics = [
+    {q:['facial','faciales','piel','skin'], note:['facial','faciales','piel','colágeno','led','galvánic','skin']},
+    {q:['corte','cortes','cabello','haircut','pelo','hair'], note:['corte','visagismo','facciones','haircut']},
+    {q:['masaje','masajes','massage'], note:['masaje','aromaterapia','relajante','massage']},
+    {q:['uña','uñas','nail','manicure'], note:['uñas','acrylic','no-chip','tech gel','diseños','nail']}
+  ];
+  for(var i=0;i<topics.length;i++){
+    if(contains(topics[i].q)){
+      var matched = sentencesMatching(topics[i].note);
+      if(matched.length) return matched.join(' ').trim();
+    }
+  }
+  if(contains(['servicio','servicios','service','services','ofrecen','offer','oferece'])){
+    var list = cfg.services || DEFAULT_SERVICES[lang] || DEFAULT_SERVICES.es;
+    return t('chat_services_list_prefix')+' '+list.join(', ')+'.';
+  }
+  if(contains(['stock','inventario','tinte','tintes','queda','agotad','low on'])){
+    var low = sortedProducts().filter(function(p){ return statusOf(p)!=='ok'; });
+    if(low.length) return t('chat_low_stock_prefix')+' '+low.map(productLabel).join(', ')+'.';
+    return t('chat_stock_ok');
+  }
+  if(contains(['venta','ventas','sale','sales','vend'])){
+    var today = todayISO();
+    var week = usageInRange(addDays(today,-6), today);
+    var month = usageInRange(ymOf(today)+'-01', today);
+    return t('chat_sales_summary', {week:fmtMoney(week.revenue), month:fmtMoney(month.revenue)});
+  }
+  return t('chat_local_joke');
+}
 async function sendChatMessage(question){
   question = (question||'').trim();
   if(!question || state.chatBusy) return;
@@ -1662,19 +1724,17 @@ async function sendChatMessage(question){
     });
     if(!resp.ok){
       var errBody = await resp.json().catch(function(){ return {}; });
-      if(errBody.error === 'chat_not_configured'){
-        state.sampleAvailable = false; state.chatOpen = false;
-      } else if(errBody.error === 'rate_limited'){
+      if(errBody.error === 'rate_limited'){
         last.text = t('chat_rate_limited'); last.isError = true;
       } else {
-        last.text = t('chat_error_generic'); last.isError = true;
+        last.text = localFallbackAnswer(question);
       }
     } else {
       var data = await resp.json();
-      last.text = data.text || t('chat_error_generic');
+      last.text = data.text || localFallbackAnswer(question);
     }
   }catch(e){
-    last.text = t('chat_error_generic'); last.isError = true;
+    last.text = localFallbackAnswer(question);
   }
   last.streaming = false;
   state.chatBusy = false;
