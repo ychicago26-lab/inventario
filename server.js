@@ -30,29 +30,35 @@ function verifyPassword(password, stored) {
   const b = Buffer.from(candidate, 'hex');
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
-function signToken(slug) {
-  const payload = Buffer.from(JSON.stringify({ slug, exp: Date.now() + TOKEN_TTL_MS })).toString('base64url');
+function normalizeAnswer(s) {
+  return (s || '').trim().toLowerCase();
+}
+function signToken(slug, userId) {
+  const payload = Buffer.from(JSON.stringify({ slug, userId, exp: Date.now() + TOKEN_TTL_MS })).toString('base64url');
   const sig = crypto.createHmac('sha256', SESSION_SECRET).update(payload).digest('base64url');
   return payload + '.' + sig;
 }
 function verifyToken(token, slug) {
-  if (!token || token.indexOf('.') === -1) return false;
+  if (!token || token.indexOf('.') === -1) return null;
   const [payload, sig] = token.split('.');
   const expected = crypto.createHmac('sha256', SESSION_SECRET).update(payload).digest('base64url');
-  if (sig !== expected) return false;
+  if (sig !== expected) return null;
   try {
     const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
-    return data.slug === slug && data.exp > Date.now();
+    if (data.slug !== slug || !(data.exp > Date.now())) return null;
+    return data;
   } catch (e) {
-    return false;
+    return null;
   }
 }
-function requireAuth(req, res, next) {
+function getBearerToken(req) {
   const header = req.headers.authorization || '';
-  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
-  if (!verifyToken(token, req.params.slug)) {
-    return res.status(401).json({ error: 'unauthorized' });
-  }
+  return header.startsWith('Bearer ') ? header.slice(7) : null;
+}
+function requireAuth(req, res, next) {
+  const data = verifyToken(getBearerToken(req), req.params.slug);
+  if (!data) return res.status(401).json({ error: 'unauthorized' });
+  req.userId = data.userId;
   next();
 }
 
@@ -90,15 +96,78 @@ async function getConfig(slug) {
   );
   return r.rows[0] ? r.rows[0].data : null;
 }
+async function getUsers(slug) {
+  const r = await pool.query(
+    'SELECT id, data FROM documents WHERE salon_id=$1 AND collection=$2 ORDER BY updated_at ASC',
+    [slug, 'users']
+  );
+  return r.rows.map((row) => Object.assign({ id: row.id }, row.data));
+}
+function findUserByName(users, fullName) {
+  const target = normalizeAnswer(fullName);
+  return users.find((u) => normalizeAnswer(u.fullName) === target) || null;
+}
 
-// ---- access: public lookup, login, password change ----
-// Minimal, unauthenticated: just enough for the login screen to greet the
-// salon by name without exposing anything else.
+// ---- access: public lookup, per-user accounts, login, recovery ----
+// Minimal, unauthenticated: just enough for the login screen to know which
+// form to show, without exposing anything else.
 app.get('/api/:slug/public', async (req, res) => {
   try {
-    const cfg = await getConfig(req.params.slug);
+    const slug = req.params.slug;
+    const cfg = await getConfig(slug);
     if (!cfg) return res.json({ exists: false });
-    res.json({ exists: true, name: cfg.name, language: cfg.language, hasPassword: !!cfg.passwordHash });
+    const users = await getUsers(slug);
+    res.json({
+      exists: true,
+      name: cfg.name,
+      language: cfg.language,
+      hasUsers: users.length > 0,
+      legacyPassword: !users.length && !!cfg.passwordHash
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+// Creates a user account. Three cases:
+//  - brand-new salon (no users yet, no legacy password): anyone can create
+//    the first account (this is the owner, right after onboarding).
+//  - legacy salon (no users yet, but has an old shared passwordHash): must
+//    prove the old password once, then this becomes the first named user.
+//  - salon that already has users: only an already signed-in user may add
+//    a new teammate.
+app.post('/api/:slug/register', async (req, res) => {
+  try {
+    const slug = req.params.slug;
+    const { fullName, password, recoveryQuestion, recoveryAnswer, oldPassword } = req.body || {};
+    if (!fullName || !fullName.trim() || !password || password.length < 4 || !recoveryQuestion || !recoveryAnswer) {
+      return res.status(400).json({ error: 'invalid_request' });
+    }
+    const users = await getUsers(slug);
+    if (users.length > 0) {
+      const authData = verifyToken(getBearerToken(req), slug);
+      if (!authData) return res.status(401).json({ error: 'unauthorized' });
+    } else {
+      const cfg = await getConfig(slug);
+      if (cfg && cfg.passwordHash) {
+        if (!oldPassword || !verifyPassword(oldPassword, cfg.passwordHash)) {
+          return res.status(401).json({ error: 'invalid_password' });
+        }
+      }
+    }
+    if (findUserByName(users, fullName)) {
+      return res.status(409).json({ error: 'name_taken' });
+    }
+    const id = genId();
+    await upsertDoc(slug, 'users', id, {
+      fullName: fullName.trim(),
+      passwordHash: hashPassword(password),
+      recoveryQuestion: recoveryQuestion.trim(),
+      recoveryAnswerHash: hashPassword(normalizeAnswer(recoveryAnswer)),
+      createdAt: new Date().toISOString()
+    });
+    res.json({ id, token: signToken(slug, id) });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'server_error' });
@@ -108,23 +177,72 @@ app.get('/api/:slug/public', async (req, res) => {
 app.post('/api/:slug/login', async (req, res) => {
   try {
     const slug = req.params.slug;
-    const cfg = await getConfig(slug);
-    const { password } = req.body || {};
-    if (!cfg || !password) {
+    const { fullName, password } = req.body || {};
+    if (!fullName || !password) return res.status(401).json({ error: 'invalid_password' });
+    const users = await getUsers(slug);
+    const user = findUserByName(users, fullName);
+    if (!user || !verifyPassword(password, user.passwordHash)) {
       return res.status(401).json({ error: 'invalid_password' });
     }
-    if (!cfg.passwordHash) {
-      // Salon created before password protection existed: whoever holds
-      // this private link sets the password now, on this first access.
-      if (password.length < 4) return res.status(400).json({ error: 'invalid_request' });
-      cfg.passwordHash = hashPassword(password);
-      await upsertDoc(slug, 'config', 'main', cfg);
-      return res.json({ token: signToken(slug) });
+    res.json({ token: signToken(slug, user.id) });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+app.post('/api/:slug/forgot-password/start', async (req, res) => {
+  try {
+    const slug = req.params.slug;
+    const { fullName } = req.body || {};
+    const users = await getUsers(slug);
+    const user = findUserByName(users, fullName);
+    if (!user) return res.status(404).json({ error: 'user_not_found' });
+    res.json({ question: user.recoveryQuestion });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+app.post('/api/:slug/forgot-password/reset', async (req, res) => {
+  try {
+    const slug = req.params.slug;
+    const { fullName, answer, newPassword } = req.body || {};
+    if (!newPassword || newPassword.length < 4) return res.status(400).json({ error: 'invalid_request' });
+    const users = await getUsers(slug);
+    const user = findUserByName(users, fullName);
+    if (!user || !verifyPassword(normalizeAnswer(answer), user.recoveryAnswerHash)) {
+      return res.status(401).json({ error: 'invalid_answer' });
     }
-    if (!verifyPassword(password, cfg.passwordHash)) {
-      return res.status(401).json({ error: 'invalid_password' });
+    user.passwordHash = hashPassword(newPassword);
+    await upsertDoc(slug, 'users', user.id, user);
+    res.json({ token: signToken(slug, user.id) });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+app.get('/api/:slug/users', requireAuth, async (req, res) => {
+  try {
+    const users = await getUsers(req.params.slug);
+    res.json(users.map((u) => ({ id: u.id, fullName: u.fullName })));
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+app.delete('/api/:slug/users/:id', requireAuth, async (req, res) => {
+  try {
+    const slug = req.params.slug;
+    const users = await getUsers(slug);
+    if (users.length <= 1) {
+      return res.status(400).json({ error: 'last_user' });
     }
-    res.json({ token: signToken(slug) });
+    await pool.query('DELETE FROM documents WHERE salon_id=$1 AND collection=$2 AND id=$3', [slug, 'users', req.params.id]);
+    res.json({ ok: true });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'server_error' });
@@ -133,16 +251,18 @@ app.post('/api/:slug/login', async (req, res) => {
 
 app.post('/api/:slug/change-password', requireAuth, async (req, res) => {
   try {
-    const cfg = await getConfig(req.params.slug);
+    const slug = req.params.slug;
+    const users = await getUsers(slug);
+    const user = users.find((u) => u.id === req.userId);
     const { currentPassword, newPassword } = req.body || {};
-    if (!cfg || !verifyPassword(currentPassword, cfg.passwordHash)) {
+    if (!user || !verifyPassword(currentPassword, user.passwordHash)) {
       return res.status(401).json({ error: 'invalid_password' });
     }
     if (!newPassword || newPassword.length < 4) {
       return res.status(400).json({ error: 'invalid_request' });
     }
-    cfg.passwordHash = hashPassword(newPassword);
-    await upsertDoc(req.params.slug, 'config', 'main', cfg);
+    user.passwordHash = hashPassword(newPassword);
+    await upsertDoc(slug, 'users', user.id, user);
     res.json({ ok: true });
   } catch (e) {
     console.error(e);
@@ -166,27 +286,20 @@ app.put('/api/:slug/config', async (req, res) => {
     const slug = req.params.slug;
     const existing = await getConfig(slug);
     const body = Object.assign({}, req.body || {});
-    const plainPassword = body.password;
-    delete body.password;
-    delete body.passwordHash; // never accepted directly from a client
+    delete body.passwordHash; // legacy field; never accepted directly from a client
 
     if (!existing) {
-      // Creating a brand-new salon: requires a password, bootstraps it,
-      // and logs the creator in immediately.
-      if (!plainPassword || plainPassword.length < 4) {
-        return res.status(400).json({ error: 'password_required' });
-      }
-      body.passwordHash = hashPassword(plainPassword);
+      // Creating a brand-new salon. The owner's own account is created
+      // right after this, via a separate /register call.
       await upsertDoc(slug, 'config', 'main', body);
-      return res.json({ ok: true, token: signToken(slug) });
+      return res.json({ ok: true });
     }
 
-    // Updating an existing salon's config requires a valid session;
-    // its password is only ever changed via /change-password.
-    const header = req.headers.authorization || '';
-    const token = header.startsWith('Bearer ') ? header.slice(7) : null;
-    if (!verifyToken(token, slug)) return res.status(401).json({ error: 'unauthorized' });
-    body.passwordHash = existing.passwordHash;
+    // Updating an existing salon's config requires a valid session tied to
+    // one of its users.
+    const data = verifyToken(getBearerToken(req), slug);
+    if (!data) return res.status(401).json({ error: 'unauthorized' });
+    if (existing.passwordHash) body.passwordHash = existing.passwordHash; // preserve legacy field until migrated
     await upsertDoc(slug, 'config', 'main', body);
     res.json({ ok: true });
   } catch (e) {
