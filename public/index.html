@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>KY Nature Beauty</title>
 <meta name="description" content="Inventario, ventas y agenda para salones de belleza">
+<meta property="og:type" content="website">
+<meta property="og:title" content="KY Nature Beauty">
+<meta property="og:description" content="Inventario, ventas, agenda de clientas y asistente con inteligencia artificial para salones de belleza.">
+<meta property="og:image" content="/favicon.svg">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <meta name="theme-color" content="#15130f">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -289,6 +293,7 @@ es:{
   auth_password:"Contraseña", auth_submit:"Entrar",
   auth_forgot_link:"¿Olvidó su contraseña?",
   auth_wrong_password:"Contraseña incorrecta.", auth_password_mismatch:"Las contraseñas no coinciden.",
+  auth_too_many_attempts:"Demasiados intentos. Espere unos minutos e inténtelo de nuevo.",
   auth_name_taken:"Ya existe una cuenta con ese nombre.", auth_name_not_found:"No encontramos una cuenta con ese nombre.",
   auth_back_to_login:"Volver a iniciar sesión",
   forgot_title:"Recuperar contraseña", forgot_step1_sub:"Escriba su nombre completo para continuar.",
@@ -383,6 +388,7 @@ en:{
   auth_password:"Password", auth_submit:"Sign in",
   auth_forgot_link:"Forgot your password?",
   auth_wrong_password:"Incorrect password.", auth_password_mismatch:"Passwords do not match.",
+  auth_too_many_attempts:"Too many attempts. Please wait a few minutes and try again.",
   auth_name_taken:"An account with that name already exists.", auth_name_not_found:"We couldn't find an account with that name.",
   auth_back_to_login:"Back to sign in",
   forgot_title:"Recover password", forgot_step1_sub:"Enter your full name to continue.",
@@ -477,6 +483,7 @@ pt:{
   auth_password:"Senha", auth_submit:"Entrar",
   auth_forgot_link:"Esqueceu sua senha?",
   auth_wrong_password:"Senha incorreta.", auth_password_mismatch:"As senhas não coincidem.",
+  auth_too_many_attempts:"Muitas tentativas. Aguarde alguns minutos e tente novamente.",
   auth_name_taken:"Já existe uma conta com esse nome.", auth_name_not_found:"Não encontramos uma conta com esse nome.",
   auth_back_to_login:"Voltar para entrar",
   forgot_title:"Recuperar senha", forgot_step1_sub:"Digite seu nome completo para continuar.",
@@ -571,6 +578,7 @@ fr:{
   auth_password:"Mot de passe", auth_submit:"Se connecter",
   auth_forgot_link:"Mot de passe oublié ?",
   auth_wrong_password:"Mot de passe incorrect.", auth_password_mismatch:"Les mots de passe ne correspondent pas.",
+  auth_too_many_attempts:"Trop de tentatives. Veuillez patienter quelques minutes et réessayer.",
   auth_name_taken:"Un compte existe déjà avec ce nom.", auth_name_not_found:"Aucun compte trouvé avec ce nom.",
   auth_back_to_login:"Retour à la connexion",
   forgot_title:"Récupérer le mot de passe", forgot_step1_sub:"Saisissez votre nom complet pour continuer.",
@@ -665,6 +673,7 @@ it:{
   auth_password:"Password", auth_submit:"Accedi",
   auth_forgot_link:"Password dimenticata?",
   auth_wrong_password:"Password errata.", auth_password_mismatch:"Le password non coincidono.",
+  auth_too_many_attempts:"Troppi tentativi. Attendi qualche minuto e riprova.",
   auth_name_taken:"Esiste già un account con questo nome.", auth_name_not_found:"Nessun account trovato con questo nome.",
   auth_back_to_login:"Torna all'accesso",
   forgot_title:"Recupera password", forgot_step1_sub:"Inserisci il tuo nome completo per continuare.",
@@ -890,6 +899,9 @@ function t(key, vars){
   if(vars){ Object.keys(vars).forEach(function(k){ s = s.split('{'+k+'}').join(vars[k]); }); }
   return s;
 }
+function authErrorMessage(res, fallbackKey){
+  return (res && res.status===429) ? t('auth_too_many_attempts') : t(fallbackKey);
+}
 function setLang(l){
   state.lang = l;
   try{ localStorage.setItem('kynb_lang', l); }catch(e){}
@@ -947,22 +959,22 @@ var Data = {
   register: async function(data){
     var r = await apiFetch('/register', {method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify(data)});
     var j = await r.json().catch(function(){ return {}; });
-    return {ok:r.ok, body:j};
+    return {ok:r.ok, status:r.status, body:j};
   },
   login: async function(fullName, password){
     var r = await fetch(apiUrl('/login'), {method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({fullName:fullName, password:password})});
     var j = await r.json().catch(function(){ return {}; });
-    return {ok:r.ok, body:j};
+    return {ok:r.ok, status:r.status, body:j};
   },
   forgotStart: async function(fullName){
     var r = await fetch(apiUrl('/forgot-password/start'), {method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({fullName:fullName})});
     var j = await r.json().catch(function(){ return {}; });
-    return {ok:r.ok, body:j};
+    return {ok:r.ok, status:r.status, body:j};
   },
   forgotReset: async function(fullName, answer, newPassword){
     var r = await fetch(apiUrl('/forgot-password/reset'), {method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({fullName:fullName, answer:answer, newPassword:newPassword})});
     var j = await r.json().catch(function(){ return {}; });
-    return {ok:r.ok, body:j};
+    return {ok:r.ok, status:r.status, body:j};
   },
   getUsers: async function(){
     var r = await apiFetch('/users');
@@ -971,7 +983,7 @@ var Data = {
   deleteUser: async function(id){
     var r = await apiFetch('/users/'+encodeURIComponent(id), {method:'DELETE'});
     var j = await r.json().catch(function(){ return {}; });
-    return {ok:r.ok, body:j};
+    return {ok:r.ok, status:r.status, body:j};
   }
 };
 
@@ -1993,7 +2005,7 @@ document.addEventListener('submit', function(e){
       return Data.register({fullName:fullName, password:pass, recoveryQuestion:recoveryQuestion, recoveryAnswer:recoveryAnswer});
     }).then(function(res){
       if(!res.ok){
-        state.authBusy = false; state.authError = t('chat_error_generic'); render();
+        state.authBusy = false; state.authError = authErrorMessage(res, 'chat_error_generic'); render();
         return;
       }
       saveToken(res.body.token);
@@ -2024,7 +2036,7 @@ document.addEventListener('submit', function(e){
       Data.register(payload).then(function(res){
         if(!res.ok){
           state.authBusy = false;
-          state.authError = res.body && res.body.error==='name_taken' ? t('auth_name_taken') : t('auth_wrong_password');
+          state.authError = res.body && res.body.error==='name_taken' ? t('auth_name_taken') : authErrorMessage(res, 'auth_wrong_password');
           render();
           return;
         }
@@ -2046,7 +2058,7 @@ document.addEventListener('submit', function(e){
     Data.forgotStart(fname).then(function(res){
       state.authBusy = false;
       if(!res.ok){
-        state.authError = t('auth_name_not_found'); render();
+        state.authError = authErrorMessage(res, 'auth_name_not_found'); render();
         return;
       }
       state.authForgotName = fname;
@@ -2065,7 +2077,7 @@ document.addEventListener('submit', function(e){
     state.authBusy = true; state.authError = null; render();
     Data.forgotReset(state.authForgotName, answer, newPw).then(function(res){
       if(!res.ok){
-        state.authBusy = false; state.authError = t('auth_wrong_password'); render();
+        state.authBusy = false; state.authError = authErrorMessage(res, 'auth_wrong_password'); render();
         return;
       }
       saveToken(res.body.token);
@@ -2130,7 +2142,7 @@ document.addEventListener('submit', function(e){
           document.getElementById('pw-current').value = '';
           document.getElementById('pw-new').value = '';
         } else {
-          showToast(t('auth_wrong_password'));
+          showToast(authErrorMessage(r, 'auth_wrong_password'));
         }
       });
   }
@@ -2142,7 +2154,7 @@ document.addEventListener('submit', function(e){
     var memberA = document.getElementById('tf-recovery-answer').value.trim();
     Data.register({fullName:memberName, password:memberPw, recoveryQuestion:memberQ, recoveryAnswer:memberA}).then(function(res){
       if(!res.ok){
-        showToast(res.body && res.body.error==='name_taken' ? t('auth_name_taken') : t('chat_error_generic'));
+        showToast(res.body && res.body.error==='name_taken' ? t('auth_name_taken') : authErrorMessage(res, 'chat_error_generic'));
         return;
       }
       state.teamUsers = state.teamUsers.concat([{id:res.body.id, fullName:memberName}]);
@@ -2311,7 +2323,7 @@ async function submitLogin(fullName, password){
   try{
     var res = await Data.login(fullName, password);
     if(!res.ok){
-      state.authBusy = false; state.authError = t('auth_wrong_password'); render();
+      state.authBusy = false; state.authError = authErrorMessage(res, 'auth_wrong_password'); render();
       return;
     }
     saveToken(res.body.token);

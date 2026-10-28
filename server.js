@@ -2,9 +2,53 @@ const express = require('express');
 const path = require('path');
 const crypto = require('crypto');
 const { Pool } = require('pg');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
+// Render sits in front of the app behind its own proxy; without this,
+// every request looks like it comes from that proxy's IP, which would make
+// the rate limiters below throttle all visitors together as one.
+app.set('trust proxy', 1);
+app.use(helmet({
+  crossOriginEmbedderPolicy: false,
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:"],
+      connectSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      frameAncestors: ["'self'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"]
+    }
+  }
+}));
 app.use(express.json({ limit: '2mb' }));
+
+// Generic limiters for the auth surface (login/register/recovery) and the
+// chat endpoint, which otherwise has no cost control of its own.
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => res.status(429).json({ error: 'too_many_requests' })
+});
+const chatLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 40,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => res.status(429).json({ error: 'too_many_requests' })
+});
+
+function isTooLong(value, max) {
+  return typeof value === 'string' && value.length > max;
+}
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -137,11 +181,14 @@ app.get('/api/:slug/public', async (req, res) => {
 //    prove the old password once, then this becomes the first named user.
 //  - salon that already has users: only an already signed-in user may add
 //    a new teammate.
-app.post('/api/:slug/register', async (req, res) => {
+app.post('/api/:slug/register', authLimiter, async (req, res) => {
   try {
     const slug = req.params.slug;
     const { fullName, password, recoveryQuestion, recoveryAnswer, oldPassword } = req.body || {};
     if (!fullName || !fullName.trim() || !password || password.length < 4 || !recoveryQuestion || !recoveryAnswer) {
+      return res.status(400).json({ error: 'invalid_request' });
+    }
+    if (isTooLong(fullName, 120) || isTooLong(password, 200) || isTooLong(recoveryQuestion, 300) || isTooLong(recoveryAnswer, 300) || isTooLong(oldPassword, 200)) {
       return res.status(400).json({ error: 'invalid_request' });
     }
     const users = await getUsers(slug);
@@ -174,11 +221,13 @@ app.post('/api/:slug/register', async (req, res) => {
   }
 });
 
-app.post('/api/:slug/login', async (req, res) => {
+app.post('/api/:slug/login', authLimiter, async (req, res) => {
   try {
     const slug = req.params.slug;
     const { fullName, password } = req.body || {};
-    if (!fullName || !password) return res.status(401).json({ error: 'invalid_password' });
+    if (!fullName || !password || isTooLong(fullName, 120) || isTooLong(password, 200)) {
+      return res.status(401).json({ error: 'invalid_password' });
+    }
     const users = await getUsers(slug);
     const user = findUserByName(users, fullName);
     if (!user || !verifyPassword(password, user.passwordHash)) {
@@ -191,10 +240,11 @@ app.post('/api/:slug/login', async (req, res) => {
   }
 });
 
-app.post('/api/:slug/forgot-password/start', async (req, res) => {
+app.post('/api/:slug/forgot-password/start', authLimiter, async (req, res) => {
   try {
     const slug = req.params.slug;
     const { fullName } = req.body || {};
+    if (!fullName || isTooLong(fullName, 120)) return res.status(404).json({ error: 'user_not_found' });
     const users = await getUsers(slug);
     const user = findUserByName(users, fullName);
     if (!user) return res.status(404).json({ error: 'user_not_found' });
@@ -205,11 +255,14 @@ app.post('/api/:slug/forgot-password/start', async (req, res) => {
   }
 });
 
-app.post('/api/:slug/forgot-password/reset', async (req, res) => {
+app.post('/api/:slug/forgot-password/reset', authLimiter, async (req, res) => {
   try {
     const slug = req.params.slug;
     const { fullName, answer, newPassword } = req.body || {};
     if (!newPassword || newPassword.length < 4) return res.status(400).json({ error: 'invalid_request' });
+    if (isTooLong(fullName, 120) || isTooLong(answer, 300) || isTooLong(newPassword, 200)) {
+      return res.status(400).json({ error: 'invalid_request' });
+    }
     const users = await getUsers(slug);
     const user = findUserByName(users, fullName);
     if (!user || !verifyPassword(normalizeAnswer(answer), user.recoveryAnswerHash)) {
@@ -249,7 +302,7 @@ app.delete('/api/:slug/users/:id', requireAuth, async (req, res) => {
   }
 });
 
-app.post('/api/:slug/change-password', requireAuth, async (req, res) => {
+app.post('/api/:slug/change-password', authLimiter, requireAuth, async (req, res) => {
   try {
     const slug = req.params.slug;
     const users = await getUsers(slug);
@@ -258,7 +311,7 @@ app.post('/api/:slug/change-password', requireAuth, async (req, res) => {
     if (!user || !verifyPassword(currentPassword, user.passwordHash)) {
       return res.status(401).json({ error: 'invalid_password' });
     }
-    if (!newPassword || newPassword.length < 4) {
+    if (!newPassword || newPassword.length < 4 || isTooLong(newPassword, 200)) {
       return res.status(400).json({ error: 'invalid_request' });
     }
     user.passwordHash = hashPassword(newPassword);
@@ -441,7 +494,7 @@ async function callAnthropic(apiKey, system, messages) {
   return { text };
 }
 
-app.post('/api/:slug/chat', requireAuth, async (req, res) => {
+app.post('/api/:slug/chat', chatLimiter, requireAuth, async (req, res) => {
   try {
     const geminiKey = process.env.GEMINI_API_KEY;
     const anthropicKey = process.env.ANTHROPIC_API_KEY;
@@ -474,6 +527,42 @@ app.get('/s/:slug', (req, res) => {
 });
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+function errorPage(code, title, message) {
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${title} — KY Nature Beauty</title>
+<style>
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+    background:#15110d;color:#ece6da;font-family:Georgia,'Times New Roman',serif;text-align:center;padding:24px;box-sizing:border-box}
+  .card{max-width:420px}
+  .code{color:#c8a35f;font-size:15px;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px}
+  h1{font-size:26px;margin:0 0 12px}
+  p{color:#bdb3a2;line-height:1.5;margin:0 0 22px}
+  a{display:inline-block;color:#15110d;background:#c8a35f;text-decoration:none;padding:10px 22px;border-radius:6px;font-size:14px}
+</style></head><body><div class="card">
+  <div class="code">Error ${code}</div>
+  <h1>${title}</h1>
+  <p>${message}</p>
+  <a href="/">Volver al inicio</a>
+</div></body></html>`;
+}
+
+// Anything not matched above: JSON for the API surface, a branded page for
+// everything else. Keeps unmatched routes from falling through to Express's
+// default plain-text 404.
+app.use((req, res) => {
+  if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'not_found' });
+  res.status(404).send(errorPage(404, 'Página no encontrada', 'El enlace al que intentó acceder no existe o ya no está disponible.'));
+});
+
+// Final safety net for anything thrown outside the per-route try/catch
+// blocks. Never leaks stack traces or error details to the client.
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  if (req.path.startsWith('/api/')) return res.status(500).json({ error: 'server_error' });
+  res.status(500).send(errorPage(500, 'Algo salió mal', 'Ocurrió un error inesperado. Por favor intente de nuevo en unos momentos.'));
 });
 
 // Start serving immediately; never crash the process over a slow/unready
