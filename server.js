@@ -361,80 +361,11 @@ app.put('/api/:slug/config', async (req, res) => {
   }
 });
 
-// ---- generic collections (products, usage, clients, appointments) ----
-app.get('/api/:slug/:collection', requireAuth, async (req, res) => {
-  try {
-    const { slug, collection } = req.params;
-    const r = await pool.query(
-      'SELECT id, data FROM documents WHERE salon_id=$1 AND collection=$2 ORDER BY updated_at ASC',
-      [slug, collection]
-    );
-    res.json(r.rows.map((row) => Object.assign({ id: row.id }, row.data)));
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: 'server_error' });
-  }
-});
-
-app.post('/api/:slug/:collection', requireAuth, async (req, res) => {
-  try {
-    const { slug, collection } = req.params;
-    const id = genId();
-    await pool.query(
-      'INSERT INTO documents (salon_id, collection, id, data) VALUES ($1,$2,$3,$4)',
-      [slug, collection, id, req.body || {}]
-    );
-    res.json({ id });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: 'server_error' });
-  }
-});
-
-app.put('/api/:slug/:collection/:id', requireAuth, async (req, res) => {
-  try {
-    await upsertDoc(req.params.slug, req.params.collection, req.params.id, req.body || {});
-    res.json({ ok: true });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: 'server_error' });
-  }
-});
-
-app.patch('/api/:slug/:collection/:id', requireAuth, async (req, res) => {
-  try {
-    const { slug, collection, id } = req.params;
-    const existing = await pool.query(
-      'SELECT data FROM documents WHERE salon_id=$1 AND collection=$2 AND id=$3',
-      [slug, collection, id]
-    );
-    const base = existing.rows[0] ? existing.rows[0].data : {};
-    const merged = Object.assign({}, base, req.body || {});
-    await upsertDoc(slug, collection, id, merged);
-    res.json({ ok: true });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: 'server_error' });
-  }
-});
-
-app.delete('/api/:slug/:collection/:id', requireAuth, async (req, res) => {
-  try {
-    const { slug, collection, id } = req.params;
-    await pool.query(
-      'DELETE FROM documents WHERE salon_id=$1 AND collection=$2 AND id=$3',
-      [slug, collection, id]
-    );
-    res.json({ ok: true });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: 'server_error' });
-  }
-});
-
 // ---- chat assistant ----
 // Tries Gemini first (GEMINI_API_KEY), then falls back to Anthropic
-// (ANTHROPIC_API_KEY) if that's the one configured instead.
+// (ANTHROPIC_API_KEY) if that's the one configured instead. Registered
+// before the generic /:collection routes below so a POST to /chat isn't
+// swallowed by the generic "create a document in this collection" handler.
 async function callGemini(apiKey, system, messages) {
   const contents = messages.map((m) => ({
     role: m.role === 'assistant' ? 'model' : 'user',
@@ -514,6 +445,77 @@ app.post('/api/:slug/chat', chatLimiter, requireAuth, async (req, res) => {
     if (result.rateLimited) return res.status(429).json({ error: 'rate_limited' });
     if (result.error) return res.status(502).json({ error: 'upstream_error' });
     res.json({ text: result.text || '' });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+// ---- generic collections (products, usage, clients, appointments) ----
+app.get('/api/:slug/:collection', requireAuth, async (req, res) => {
+  try {
+    const { slug, collection } = req.params;
+    const r = await pool.query(
+      'SELECT id, data FROM documents WHERE salon_id=$1 AND collection=$2 ORDER BY updated_at ASC',
+      [slug, collection]
+    );
+    res.json(r.rows.map((row) => Object.assign({ id: row.id }, row.data)));
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+app.post('/api/:slug/:collection', requireAuth, async (req, res) => {
+  try {
+    const { slug, collection } = req.params;
+    const id = genId();
+    await pool.query(
+      'INSERT INTO documents (salon_id, collection, id, data) VALUES ($1,$2,$3,$4)',
+      [slug, collection, id, req.body || {}]
+    );
+    res.json({ id });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+app.put('/api/:slug/:collection/:id', requireAuth, async (req, res) => {
+  try {
+    await upsertDoc(req.params.slug, req.params.collection, req.params.id, req.body || {});
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+app.patch('/api/:slug/:collection/:id', requireAuth, async (req, res) => {
+  try {
+    const { slug, collection, id } = req.params;
+    const existing = await pool.query(
+      'SELECT data FROM documents WHERE salon_id=$1 AND collection=$2 AND id=$3',
+      [slug, collection, id]
+    );
+    const base = existing.rows[0] ? existing.rows[0].data : {};
+    const merged = Object.assign({}, base, req.body || {});
+    await upsertDoc(slug, collection, id, merged);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+app.delete('/api/:slug/:collection/:id', requireAuth, async (req, res) => {
+  try {
+    const { slug, collection, id } = req.params;
+    await pool.query(
+      'DELETE FROM documents WHERE salon_id=$1 AND collection=$2 AND id=$3',
+      [slug, collection, id]
+    );
+    res.json({ ok: true });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'server_error' });
