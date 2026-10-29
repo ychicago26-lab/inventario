@@ -458,6 +458,39 @@ app.post('/api/:slug/chat', chatLimiter, requireAuth, async (req, res) => {
   }
 });
 
+// ---- public booking requests (no login needed) ----
+// Registered before the generic /:collection routes below so this POST
+// isn't swallowed by the generic "create a document" handler, which
+// requires auth — the same mistake already made once with /chat.
+app.post('/api/:slug/booking-requests', authLimiter, async (req, res) => {
+  try {
+    const slug = req.params.slug;
+    const cfg = await getConfig(slug);
+    if (!cfg) return res.status(404).json({ error: 'not_found' });
+    const { clientName, phone, service, date, time, notes } = req.body || {};
+    if (!clientName || !clientName.trim() || !phone || !phone.trim() || !service || !date) {
+      return res.status(400).json({ error: 'invalid_request' });
+    }
+    if (isTooLong(clientName, 120) || isTooLong(phone, 40) || isTooLong(service, 120) || isTooLong(date, 20) || isTooLong(time, 20) || isTooLong(notes, 500)) {
+      return res.status(400).json({ error: 'invalid_request' });
+    }
+    const id = genId();
+    await upsertDoc(slug, 'booking_requests', id, {
+      clientName: clientName.trim(),
+      phone: phone.trim(),
+      service: service.trim(),
+      date,
+      time: time || '',
+      notes: (notes || '').trim(),
+      createdAt: new Date().toISOString()
+    });
+    res.json({ id });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
 // ---- generic collections (products, usage, clients, appointments) ----
 app.get('/api/:slug/:collection', requireAuth, async (req, res) => {
   try {

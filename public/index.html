@@ -326,6 +326,7 @@ es:{
   rep_ranking:"Ranking de uso", rep_most:"Más usados", rep_least:"Menos usados", rep_no_data:"No hay datos en este periodo.",
   rep_col_product:"Producto", rep_col_qty:"Cantidad", rep_col_revenue:"Ventas",
   ag_sub:"Clientas y citas de tu salón", ag_clients:"Clientas", ag_appts:"Citas", ag_add_client:"Nueva clienta",
+  ag_requests:"Solicitudes", ag_requests_empty:"No hay solicitudes de reserva pendientes.", ag_request_confirm:"Confirmar",
   ag_add_appt:"Nueva cita", ag_name:"Nombre", ag_phone:"Teléfono", ag_email:"Correo", ag_notes:"Notas",
   ag_empty_clients:"Aún no has agregado clientas.", ag_empty_appts:"No hay citas programadas.",
   ag_appt_client:"Clienta", ag_appt_date:"Fecha", ag_appt_time:"Hora", ag_appt_service:"Servicio realizado",
@@ -429,6 +430,7 @@ en:{
   rep_ranking:"Usage ranking", rep_most:"Most used", rep_least:"Least used", rep_no_data:"No data for this period.",
   rep_col_product:"Product", rep_col_qty:"Qty", rep_col_revenue:"Sales",
   ag_sub:"Clients and appointments", ag_clients:"Clients", ag_appts:"Appointments", ag_add_client:"New client",
+  ag_requests:"Requests", ag_requests_empty:"No pending booking requests.", ag_request_confirm:"Confirm",
   ag_add_appt:"New appointment", ag_name:"Name", ag_phone:"Phone", ag_email:"Email", ag_notes:"Notes",
   ag_empty_clients:"You haven't added any clients yet.", ag_empty_appts:"No appointments scheduled.",
   ag_appt_client:"Client", ag_appt_date:"Date", ag_appt_time:"Time", ag_appt_service:"Service performed",
@@ -532,6 +534,7 @@ pt:{
   rep_ranking:"Ranking de uso", rep_most:"Mais usados", rep_least:"Menos usados", rep_no_data:"Sem dados neste período.",
   rep_col_product:"Produto", rep_col_qty:"Qtd", rep_col_revenue:"Vendas",
   ag_sub:"Clientes e agendamentos", ag_clients:"Clientes", ag_appts:"Agendamentos", ag_add_client:"Nova cliente",
+  ag_requests:"Solicitações", ag_requests_empty:"Nenhuma solicitação de reserva pendente.", ag_request_confirm:"Confirmar",
   ag_add_appt:"Nova cita", ag_name:"Nome", ag_phone:"Telefone", ag_email:"E-mail", ag_notes:"Notas",
   ag_empty_clients:"Você ainda não adicionou clientes.", ag_empty_appts:"Nenhum agendamento marcado.",
   ag_appt_client:"Cliente", ag_appt_date:"Data", ag_appt_time:"Hora", ag_appt_service:"Serviço realizado",
@@ -635,6 +638,7 @@ fr:{
   rep_ranking:"Classement d'utilisation", rep_most:"Les plus utilisés", rep_least:"Les moins utilisés", rep_no_data:"Aucune donnée pour cette période.",
   rep_col_product:"Produit", rep_col_qty:"Qté", rep_col_revenue:"Ventes",
   ag_sub:"Clientes et rendez-vous", ag_clients:"Clientes", ag_appts:"Rendez-vous", ag_add_client:"Nouvelle cliente",
+  ag_requests:"Demandes", ag_requests_empty:"Aucune demande de réservation en attente.", ag_request_confirm:"Confirmer",
   ag_add_appt:"Nouveau rendez-vous", ag_name:"Nom", ag_phone:"Téléphone", ag_email:"E-mail", ag_notes:"Notes",
   ag_empty_clients:"Vous n'avez pas encore ajouté de clientes.", ag_empty_appts:"Aucun rendez-vous prévu.",
   ag_appt_client:"Cliente", ag_appt_date:"Date", ag_appt_time:"Heure", ag_appt_service:"Service réalisé",
@@ -738,6 +742,7 @@ it:{
   rep_ranking:"Classifica utilizzo", rep_most:"Più usati", rep_least:"Meno usati", rep_no_data:"Nessun dato per questo periodo.",
   rep_col_product:"Prodotto", rep_col_qty:"Qtà", rep_col_revenue:"Vendite",
   ag_sub:"Clienti e appuntamenti", ag_clients:"Clienti", ag_appts:"Appuntamenti", ag_add_client:"Nuova cliente",
+  ag_requests:"Richieste", ag_requests_empty:"Nessuna richiesta di prenotazione in sospeso.", ag_request_confirm:"Conferma",
   ag_add_appt:"Nuovo appuntamento", ag_name:"Nome", ag_phone:"Telefono", ag_email:"Email", ag_notes:"Note",
   ag_empty_clients:"Non hai ancora aggiunto clienti.", ag_empty_appts:"Nessun appuntamento in programma.",
   ag_appt_client:"Cliente", ag_appt_date:"Data", ag_appt_time:"Ora", ag_appt_service:"Servizio eseguito",
@@ -885,7 +890,7 @@ var state = {
   authRequired:false, authSalonName:'', authHasUsers:true, authLegacyPassword:false, authBusy:false, authError:null,
   authView:'login', authForgotStep:'name', authForgotName:'', authForgotQuestion:'',
   authCaptchaA:0, authCaptchaB:0,
-  currentUserName:'', teamUsers:[], musicPlaying:false
+  currentUserName:'', teamUsers:[], musicPlaying:false, bookingRequests:[]
 };
 var SALON_SLUG = (function(){
   var m = location.pathname.match(/^\/s\/([a-z0-9-]+)/i);
@@ -1493,7 +1498,27 @@ function renderAgenda(){
     '<div class="seg">'+
       '<button class="'+(state.agTab==='appts'?'active':'')+'" data-action="ag-tab" data-agtab="appts">'+t('ag_appts')+'</button>'+
       '<button class="'+(state.agTab==='clients'?'active':'')+'" data-action="ag-tab" data-agtab="clients">'+t('ag_clients')+'</button>'+
+      '<button class="'+(state.agTab==='requests'?'active':'')+'" data-action="ag-tab" data-agtab="requests">'+t('ag_requests')+(state.bookingRequests.length?' ('+state.bookingRequests.length+')':'')+'</button>'+
     '</div></div>';
+
+  if(state.agTab==='requests'){
+    if(!state.bookingRequests.length){
+      html += '<div class="card empty-state">'+ICONS.empty+'<p>'+t('ag_requests_empty')+'</p></div>';
+      return html;
+    }
+    state.bookingRequests.slice().sort(function(a,b){ return (a.date+(a.time||'')).localeCompare(b.date+(b.time||'')); }).forEach(function(r){
+      html += '<div class="appt-card"><div class="appt-time">'+esc(r.time||'--:--')+'</div><div class="appt-body">'+
+        '<div class="nm">'+esc(r.clientName)+'</div>'+
+        '<div class="svc">'+esc(r.service||'')+' · '+esc(fmtDate(r.date))+'</div>'+
+        '<div class="mt" style="font-size:13px;color:var(--text-dim)">'+esc(r.phone||'')+'</div>'+
+        (r.notes?'<div class="nt">'+esc(r.notes)+'</div>':'')+
+        '</div><div class="row-actions">'+
+        '<button class="btn btn-primary" data-action="confirm-request" data-id="'+r.id+'">'+t('ag_request_confirm')+'</button>'+
+        '<button class="btn btn-icon btn-danger" data-action="reject-request" data-id="'+r.id+'">'+ICONS.trash+'</button>'+
+        '</div></div>';
+    });
+    return html;
+  }
 
   if(state.agTab==='clients'){
     html += '<div style="margin-bottom:16px"><button class="btn btn-primary" data-action="new-client">'+ICONS.plus+t('ag_add_client')+'</button></div>';
@@ -2360,6 +2385,21 @@ document.addEventListener('click', function(e){
   else if(action==='new-appt'){ state.modal = {type:'appt'}; render(); }
   else if(action==='edit-appt'){ var aid=actEl.getAttribute('data-id'); state.modal = {type:'appt', id:aid, data: state.appointments.find(function(x){return x.id===aid;})}; render(); }
   else if(action==='delete-appt'){ if(confirm(t('common_delete_q'))){ Data.deleteDoc('appointments', actEl.getAttribute('data-id')); } }
+  else if(action==='confirm-request'){
+    var reqId = actEl.getAttribute('data-id');
+    var reqDoc = state.bookingRequests.find(function(r){ return r.id===reqId; });
+    if(!reqDoc) return;
+    saveAppt(null, {clientName:reqDoc.clientName, date:reqDoc.date, time:reqDoc.time||'', service:reqDoc.service||'', notes:reqDoc.notes||''}).then(function(){
+      var known = state.clients.find(function(c){ return c.name.toLowerCase()===reqDoc.clientName.toLowerCase(); });
+      if(known && reqDoc.phone && !known.phone){ Data.updateDoc('clients', known.id, {phone:reqDoc.phone}); }
+      return Data.deleteDoc('booking_requests', reqId);
+    }).then(function(){
+      showToast(t('ag_request_confirm'));
+    });
+  }
+  else if(action==='reject-request'){
+    if(confirm(t('common_delete_q'))){ Data.deleteDoc('booking_requests', actEl.getAttribute('data-id')); }
+  }
   else if(action==='close-modal' || action==='modal-back'){ if(action==='modal-back' && actEl!==e.target) return; state.modal=null; render(); }
   else if(action==='remove-brand'){ var idx=parseInt(actEl.getAttribute('data-idx'),10); var brands=(state.config.brands||[]).slice(); brands.splice(idx,1); Data.setConfig(Object.assign({}, state.config, {brands:brands})); }
   else if(action==='remove-service'){ var sidx=parseInt(actEl.getAttribute('data-idx'),10); var services=(state.config.services||DEFAULT_SERVICES[getLang()]||DEFAULT_SERVICES.es).slice(); services.splice(sidx,1); Data.setConfig(Object.assign({}, state.config, {services:services})); }
@@ -2429,6 +2469,7 @@ function startApp(){
   unsubs.push(Data.subscribeCollection('usage', function(list){ state.usage = list; render(); }));
   unsubs.push(Data.subscribeCollection('clients', function(list){ state.clients = list; render(); }));
   unsubs.push(Data.subscribeCollection('appointments', function(list){ state.appointments = list; render(); }));
+  unsubs.push(Data.subscribeCollection('booking_requests', function(list){ state.bookingRequests = list; render(); }));
   Data.getUsers().then(function(users){
     state.teamUsers = users || [];
     var myId = currentUserId();

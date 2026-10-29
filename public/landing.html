@@ -189,6 +189,27 @@ footer{background:var(--bg-raised);border-top:1px solid var(--line);padding-bloc
 .music-toggle span{font-size:13px;font-family:var(--sans);white-space:nowrap}
 @media (max-width:540px){ .music-toggle span{display:none} .music-toggle{padding:14px} }
 
+/* ---------- booking form ---------- */
+.booking{padding-block:40px 100px}
+.booking-card{max-width:620px;margin:0 auto;background:var(--bg-raised);border:1px solid var(--line);border-radius:18px;padding:40px}
+.booking-card .eyebrow{display:block;margin-bottom:14px;text-align:center}
+.booking-card h2{font-size:clamp(26px,3.6vw,36px);text-align:center;margin-bottom:12px}
+.booking-sub{color:var(--muted);font-size:15px;text-align:center;max-width:46ch;margin:0 auto 28px}
+.b-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.b-field{margin-bottom:16px}
+.b-field label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+.b-field input,.b-field select,.b-field textarea{
+  width:100%;background:#1c1712;border:1px solid var(--line);color:var(--fg);border-radius:10px;
+  padding:11px 14px;font-family:var(--sans);font-size:15px;outline:none;
+}
+.b-field input:focus,.b-field select:focus,.b-field textarea:focus{border-color:var(--accent)}
+.b-field textarea{resize:vertical;font-family:var(--sans)}
+.booking-error{color:#e08a7a;font-size:13.5px;margin:-6px 0 14px}
+.booking-success{text-align:center;padding:20px 0}
+.booking-success strong{font-family:var(--serif);font-size:20px;color:var(--accent-soft);display:block;margin-bottom:10px}
+.booking-success p{color:var(--muted);font-size:14.5px}
+@media (max-width:540px){ .b-row{grid-template-columns:1fr} .booking-card{padding:28px 20px} }
+
 /* ---------- chat widget ---------- */
 .chat-fab{
   position:fixed;right:max(20px,env(safe-area-inset-right,0px));bottom:max(20px,env(safe-area-inset-bottom,0px));z-index:46;
@@ -271,7 +292,7 @@ footer{background:var(--bg-raised);border-top:1px solid var(--line);padding-bloc
       </ul>
     </nav>
     <div class="nav-actions">
-      <a class="btn btn-ghost" href="#contacto">Reservar cita</a>
+      <a class="btn btn-ghost" href="#reservar">Reservar cita</a>
       <a class="btn btn-primary" href="/s/ky-nature-beauty-2g5w">Iniciar sesión</a>
       <button class="menu-toggle" id="menuToggle" aria-label="Abrir menú" aria-expanded="false">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
@@ -289,6 +310,7 @@ footer{background:var(--bg-raised);border-top:1px solid var(--line);padding-bloc
       <li><a href="#servicios">Servicios</a></li>
       <li><a href="#experiencia">Experiencia</a></li>
       <li><a href="#galeria">Galería</a></li>
+      <li><a href="#reservar">Reservar cita</a></li>
       <li><a href="#contacto">Contacto</a></li>
     </ul>
     <a class="btn btn-primary" href="/s/ky-nature-beauty-2g5w">Iniciar sesión</a>
@@ -305,7 +327,7 @@ footer{background:var(--bg-raised);border-top:1px solid var(--line);padding-bloc
       <h1>Más que belleza,<br><em>una experiencia</em> para ti</h1>
       <p>Cabello, piel, uñas y bienestar en un mismo espacio, pensado para que cada visita se sienta como un respiro.</p>
       <div class="hero-cta">
-        <a class="btn btn-primary" href="#contacto">Reservar una cita</a>
+        <a class="btn btn-primary" href="#reservar">Reservar una cita</a>
         <a class="btn btn-ghost" href="#servicios">Ver servicios</a>
       </div>
     </div>
@@ -363,6 +385,58 @@ footer{background:var(--bg-raised);border-top:1px solid var(--line);padding-bloc
           <li>Masaje de piedras calientes</li>
           <li>Masaje con ventosas</li>
         </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="booking wrap" id="reservar">
+    <div class="booking-card">
+      <span class="eyebrow">Reserva en línea</span>
+      <h2>Agenda tu cita</h2>
+      <p class="booking-sub">Escribe tus datos y te confirmamos por teléfono o WhatsApp en cuanto revisemos el horario disponible.</p>
+      <form id="booking-form">
+        <div class="b-row">
+          <div class="b-field"><label>Nombre completo</label><input required id="bf-name" placeholder="Tu nombre"></div>
+          <div class="b-field"><label>Teléfono</label><input required id="bf-phone" placeholder="773-000-0000"></div>
+        </div>
+        <div class="b-field"><label>Servicio</label>
+          <select required id="bf-service">
+            <option value="" disabled selected>Selecciona un servicio</option>
+            <optgroup label="Cabello">
+              <option>Corte de cabello para dama</option>
+              <option>Corte de cabello para caballero</option>
+              <option>Color</option>
+              <option>Balayage</option>
+              <option>Rayos</option>
+              <option>Colores de fantasía</option>
+              <option>Permanente para dama</option>
+              <option>Permanente para caballero</option>
+            </optgroup>
+            <optgroup label="Rostro y piel">
+              <option>Faciales profesionales</option>
+              <option>Maquillaje profesional</option>
+            </optgroup>
+            <optgroup label="Uñas">
+              <option>Uñas personalizadas</option>
+            </optgroup>
+            <optgroup label="Bienestar">
+              <option>Masaje relajante</option>
+              <option>Masaje de piedras calientes</option>
+              <option>Masaje con ventosas</option>
+            </optgroup>
+          </select>
+        </div>
+        <div class="b-row">
+          <div class="b-field"><label>Fecha</label><input required type="date" id="bf-date"></div>
+          <div class="b-field"><label>Hora preferida</label><input type="time" id="bf-time"></div>
+        </div>
+        <div class="b-field"><label>Notas (opcional)</label><textarea id="bf-notes" rows="3" placeholder="Algo que debamos saber antes de tu cita"></textarea></div>
+        <p id="bookingError" class="booking-error" hidden></p>
+        <button type="submit" class="btn btn-primary" id="bookingSubmit" style="width:100%">Enviar solicitud de cita</button>
+      </form>
+      <div id="bookingSuccess" class="booking-success" hidden>
+        <strong>¡Listo! Recibimos tu solicitud.</strong>
+        <p>Nos pondremos en contacto al teléfono que nos diste para confirmar el horario exacto de tu cita.</p>
       </div>
     </div>
   </section>
@@ -587,6 +661,42 @@ footer{background:var(--bg-raised);border-top:1px solid var(--line);padding-bloc
     addMsg(question, 'user');
     chatInput.value = '';
     setTimeout(function(){ addMsg(localAnswer(question), 'bot'); }, 350);
+  });
+
+  /* ---------- booking form ---------- */
+  var dateInput = document.getElementById('bf-date');
+  if(dateInput){ dateInput.min = new Date().toISOString().slice(0,10); }
+
+  var bookingForm = document.getElementById('booking-form');
+  var bookingError = document.getElementById('bookingError');
+  var bookingSubmit = document.getElementById('bookingSubmit');
+  var bookingSuccess = document.getElementById('bookingSuccess');
+
+  bookingForm.addEventListener('submit', function(e){
+    e.preventDefault();
+    bookingError.hidden = true;
+    var payload = {
+      clientName: document.getElementById('bf-name').value.trim(),
+      phone: document.getElementById('bf-phone').value.trim(),
+      service: document.getElementById('bf-service').value,
+      date: document.getElementById('bf-date').value,
+      time: document.getElementById('bf-time').value,
+      notes: document.getElementById('bf-notes').value.trim()
+    };
+    bookingSubmit.disabled = true;
+    bookingSubmit.textContent = 'Enviando…';
+    fetch('/api/ky-nature-beauty-2g5w/booking-requests', {
+      method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify(payload)
+    }).then(function(r){
+      if(!r.ok) throw new Error('request_failed');
+      bookingForm.hidden = true;
+      bookingSuccess.hidden = false;
+    }).catch(function(){
+      bookingSubmit.disabled = false;
+      bookingSubmit.textContent = 'Enviar solicitud de cita';
+      bookingError.hidden = false;
+      bookingError.textContent = 'No pudimos enviar tu solicitud. Por favor intenta de nuevo, o escríbenos directo por WhatsApp al 773-241-1224.';
+    });
   });
 })();
 </script>
