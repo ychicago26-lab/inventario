@@ -616,7 +616,7 @@ footer{background:var(--bg-raised);border-top:1px solid var(--line);padding-bloc
     { keys:['servicio','servicios','ofrecen','hacen'],
       text:'Ofrecemos servicios de cabello (cortes, color, balayage, rayos, colores de fantasía, permanentes), faciales profesionales, maquillaje, uñas personalizadas, y masajes de bienestar. Pregúntame por cualquiera de ellos para más detalle.' }
   ];
-  var JOKE = 'Esa todavía no la sé responder a fondo, pero aquí va un chiste mientras tanto: ¿por qué el peine siempre anda triste? Porque lo dejan hecho un lío. Mientras tanto, pregúntame sobre servicios, faciales, cortes, masajes, uñas, horario, ubicación o cómo reservar tu cita.';
+  var FALLBACK = 'En este momento no es posible procesar su pregunta. Le recomendamos contactarnos directamente por WhatsApp al 773-241-1224, o por correo a nailskybeauty2021@gmail.com.';
 
   function localAnswer(question){
     var q = question.toLowerCase();
@@ -625,7 +625,7 @@ footer{background:var(--bg-raised);border-top:1px solid var(--line);padding-bloc
         if(q.indexOf(TOPICS[i].keys[j]) !== -1) return TOPICS[i].text;
       }
     }
-    return JOKE;
+    return null;
   }
 
   var chatFab = document.getElementById('chatFab');
@@ -635,6 +635,8 @@ footer{background:var(--bg-raised);border-top:1px solid var(--line);padding-bloc
   var chatForm = document.getElementById('chatForm');
   var chatInput = document.getElementById('chatInput');
   var chatStarted = false;
+  var chatHistory = [];
+  var chatBusy = false;
 
   function addMsg(text, who){
     var div = document.createElement('div');
@@ -642,13 +644,14 @@ footer{background:var(--bg-raised);border-top:1px solid var(--line);padding-bloc
     div.textContent = text;
     chatBody.appendChild(div);
     chatBody.scrollTop = chatBody.scrollHeight;
+    return div;
   }
 
   chatFab.addEventListener('click', function(){
     chatPanel.classList.add('open');
     if(!chatStarted){
       chatStarted = true;
-      addMsg('Hola, soy el asistente de KY Nature Beauty. Pregúntame sobre nuestros servicios, horario, ubicación o cómo reservar tu cita.', 'bot');
+      addMsg('Buenas tardes. Soy el asistente de KY Nature Beauty. Con gusto responderé sus preguntas sobre nuestros servicios, horario, ubicación o el proceso de reserva.', 'bot');
     }
     chatInput.focus();
   });
@@ -657,10 +660,30 @@ footer{background:var(--bg-raised);border-top:1px solid var(--line);padding-bloc
   chatForm.addEventListener('submit', function(e){
     e.preventDefault();
     var question = chatInput.value.trim();
-    if(!question) return;
+    if(!question || chatBusy) return;
     addMsg(question, 'user');
+    chatHistory.push({ role:'user', content: question });
+    if(chatHistory.length > 12) chatHistory = chatHistory.slice(-12);
     chatInput.value = '';
-    setTimeout(function(){ addMsg(localAnswer(question), 'bot'); }, 350);
+    chatBusy = true;
+    var thinking = addMsg('Escribiendo…', 'bot');
+    fetch('/api/ky-nature-beauty-2g5w/public-chat', {
+      method:'POST', headers:{'content-type':'application/json'},
+      body: JSON.stringify({ messages: chatHistory })
+    }).then(function(r){
+      if(!r.ok) throw new Error('chat_failed');
+      return r.json();
+    }).then(function(data){
+      var reply = (data && data.text) ? data.text : (localAnswer(question) || FALLBACK);
+      thinking.textContent = reply;
+      chatHistory.push({ role:'assistant', content: reply });
+      chatBody.scrollTop = chatBody.scrollHeight;
+    }).catch(function(){
+      thinking.textContent = localAnswer(question) || FALLBACK;
+      chatBody.scrollTop = chatBody.scrollHeight;
+    }).finally(function(){
+      chatBusy = false;
+    });
   });
 
   /* ---------- booking form ---------- */

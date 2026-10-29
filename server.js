@@ -458,6 +458,64 @@ app.post('/api/:slug/chat', chatLimiter, requireAuth, async (req, res) => {
   }
 });
 
+// Public, unauthenticated chat for the marketing landing page. Deliberately
+// never told anything private (inventory, clients, sales) — only the fixed
+// public-facing description below, the same information already printed on
+// the landing page itself — so there is nothing sensitive for it to leak.
+const PUBLIC_CHAT_SYSTEM = `Eres el asistente virtual de KY Nature Beauty, un salón de belleza y spa en Cicero, Illinois.
+Responde siempre en un tono formal, cordial y profesional. No hagas chistes ni bromas bajo ninguna circunstancia.
+Si no sabes algo o la pregunta no tiene relación con el salón, indícalo con cortesía y sugiere contactar directamente al salón.
+
+Servicios que ofrece el salón:
+- Cabello: corte de cabello para dama y para caballero, color, balayage, rayos, colores de fantasía, permanente para dama y para caballero (los cortes se realizan según las facciones del cliente o su preferencia personal).
+- Rostro y piel: faciales profesionales adaptados a cada tipo de piel, trabajando con colágeno, máquinas LED o aparatología/galvánicas, y mascarillas orgánicas de calidad spa.
+- Maquillaje profesional para cualquier ocasión.
+- Uñas personalizadas: acrílico, no-chip y tech gel, con diseños a la medida.
+- Bienestar: masaje relajante, masaje de piedras calientes y masaje con ventosas, de 45 minutos a una hora, en un ambiente relajante con aromaterapia.
+
+Horario: lunes a viernes de 9:00 am a 7:00 pm, sábados de 9:00 am a 5:00 pm, domingos cerrado.
+Ubicación: Cicero, Illinois.
+Contacto: teléfono y WhatsApp 773-241-1224, correo nailskybeauty2021@gmail.com.
+
+No inventes precios exactos: indica que varían según el servicio y que se puede solicitar una cotización por WhatsApp.
+No confirmes horarios específicos de citas: para eso existe un formulario de reserva en la misma página, o puede escribir por WhatsApp.
+Mantén las respuestas breves y claras.`;
+
+app.post('/api/:slug/public-chat', chatLimiter, async (req, res) => {
+  try {
+    const slug = req.params.slug;
+    const cfg = await getConfig(slug);
+    if (!cfg) return res.status(404).json({ error: 'not_found' });
+
+    const geminiKey = process.env.GEMINI_API_KEY;
+    const anthropicKey = process.env.ANTHROPIC_API_KEY;
+    if (!geminiKey && !anthropicKey) {
+      return res.status(503).json({ error: 'chat_not_configured' });
+    }
+
+    const { messages } = req.body || {};
+    if (!Array.isArray(messages) || !messages.length || messages.length > 12) {
+      return res.status(400).json({ error: 'invalid_request' });
+    }
+    for (const m of messages) {
+      if (!m || typeof m.content !== 'string' || isTooLong(m.content, 600)) {
+        return res.status(400).json({ error: 'invalid_request' });
+      }
+    }
+
+    const result = geminiKey
+      ? await callGemini(geminiKey, PUBLIC_CHAT_SYSTEM, messages)
+      : await callAnthropic(anthropicKey, PUBLIC_CHAT_SYSTEM, messages);
+
+    if (result.rateLimited) return res.status(429).json({ error: 'rate_limited' });
+    if (result.error) return res.status(502).json({ error: 'upstream_error' });
+    res.json({ text: result.text || '' });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
 // ---- public booking requests (no login needed) ----
 // Registered before the generic /:collection routes below so this POST
 // isn't swallowed by the generic "create a document" handler, which
