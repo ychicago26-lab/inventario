@@ -534,18 +534,19 @@ app.get('/healthz', (req, res) => res.status(200).send('ok'));
 // before our own "/" route below ever runs, and the landing page would
 // never be reachable.
 app.use(express.static(path.join(__dirname, 'public'), { index: false }));
-app.get('/s/:slug', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+// These three pages change on every deploy, so never let a browser (or a
+// phone carrier's data-saving proxy) serve a stale cached copy after one —
+// always revalidate with the server first.
+function sendFresh(res, file) {
+  res.set('Cache-Control', 'no-cache');
+  res.sendFile(path.join(__dirname, 'public', file));
+}
+app.get('/s/:slug', (req, res) => sendFresh(res, 'index.html'));
 // Public marketing page. New-salon onboarding (previously at "/") moved to
 // "/nuevo" since the client-side app treats any path other than "/s/:slug"
 // as "no salon yet" and shows the onboarding screen either way.
-app.get('/nuevo', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'landing.html'));
-});
+app.get('/nuevo', (req, res) => sendFresh(res, 'index.html'));
+app.get('/', (req, res) => sendFresh(res, 'landing.html'));
 
 function errorPage(code, title, message) {
   return `<!doctype html><html lang="es"><head><meta charset="utf-8">
