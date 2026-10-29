@@ -293,6 +293,10 @@ es:{
   auth_old_password:"Contraseña anterior del salón",
   auth_password:"Contraseña", auth_submit:"Entrar",
   auth_forgot_link:"¿Olvidó su contraseña?",
+  auth_create_account_link:"¿Nueva aquí? Crear cuenta",
+  auth_captcha_label:"Verificación: ¿cuánto es {a} + {b}?",
+  auth_captcha_wrong:"Respuesta de verificación incorrecta.",
+  auth_create_account_title:"Crear cuenta nueva",
   auth_wrong_password:"Contraseña incorrecta.", auth_password_mismatch:"Las contraseñas no coinciden.",
   auth_too_many_attempts:"Demasiados intentos. Espere unos minutos e inténtelo de nuevo.",
   auth_name_taken:"Ya existe una cuenta con ese nombre.", auth_name_not_found:"No encontramos una cuenta con ese nombre.",
@@ -389,6 +393,10 @@ en:{
   auth_old_password:"Salon's previous password",
   auth_password:"Password", auth_submit:"Sign in",
   auth_forgot_link:"Forgot your password?",
+  auth_create_account_link:"New here? Create an account",
+  auth_captcha_label:"Verification: what is {a} + {b}?",
+  auth_captcha_wrong:"Incorrect verification answer.",
+  auth_create_account_title:"Create a new account",
   auth_wrong_password:"Incorrect password.", auth_password_mismatch:"Passwords do not match.",
   auth_too_many_attempts:"Too many attempts. Please wait a few minutes and try again.",
   auth_name_taken:"An account with that name already exists.", auth_name_not_found:"We couldn't find an account with that name.",
@@ -485,6 +493,10 @@ pt:{
   auth_old_password:"Senha anterior do salão",
   auth_password:"Senha", auth_submit:"Entrar",
   auth_forgot_link:"Esqueceu sua senha?",
+  auth_create_account_link:"Nova por aqui? Criar conta",
+  auth_captcha_label:"Verificação: quanto é {a} + {b}?",
+  auth_captcha_wrong:"Resposta de verificação incorreta.",
+  auth_create_account_title:"Criar nova conta",
   auth_wrong_password:"Senha incorreta.", auth_password_mismatch:"As senhas não coincidem.",
   auth_too_many_attempts:"Muitas tentativas. Aguarde alguns minutos e tente novamente.",
   auth_name_taken:"Já existe uma conta com esse nome.", auth_name_not_found:"Não encontramos uma conta com esse nome.",
@@ -581,6 +593,10 @@ fr:{
   auth_old_password:"Ancien mot de passe du salon",
   auth_password:"Mot de passe", auth_submit:"Se connecter",
   auth_forgot_link:"Mot de passe oublié ?",
+  auth_create_account_link:"Nouvelle ici ? Créer un compte",
+  auth_captcha_label:"Vérification : combien font {a} + {b} ?",
+  auth_captcha_wrong:"Réponse de vérification incorrecte.",
+  auth_create_account_title:"Créer un nouveau compte",
   auth_wrong_password:"Mot de passe incorrect.", auth_password_mismatch:"Les mots de passe ne correspondent pas.",
   auth_too_many_attempts:"Trop de tentatives. Veuillez patienter quelques minutes et réessayer.",
   auth_name_taken:"Un compte existe déjà avec ce nom.", auth_name_not_found:"Aucun compte trouvé avec ce nom.",
@@ -677,6 +693,10 @@ it:{
   auth_old_password:"Vecchia password del salone",
   auth_password:"Password", auth_submit:"Accedi",
   auth_forgot_link:"Password dimenticata?",
+  auth_create_account_link:"Nuova qui? Crea un account",
+  auth_captcha_label:"Verifica: quanto fa {a} + {b}?",
+  auth_captcha_wrong:"Risposta di verifica errata.",
+  auth_create_account_title:"Crea un nuovo account",
   auth_wrong_password:"Password errata.", auth_password_mismatch:"Le password non coincidono.",
   auth_too_many_attempts:"Troppi tentativi. Attendi qualche minuto e riprova.",
   auth_name_taken:"Esiste già un account con questo nome.", auth_name_not_found:"Nessun account trovato con questo nome.",
@@ -849,6 +869,7 @@ var state = {
   formulaCameraOpen:false, formulaCameraError:null,
   authRequired:false, authSalonName:'', authHasUsers:true, authLegacyPassword:false, authBusy:false, authError:null,
   authView:'login', authForgotStep:'name', authForgotName:'', authForgotQuestion:'',
+  authCaptchaA:0, authCaptchaB:0,
   currentUserName:'', teamUsers:[], musicPlaying:false
 };
 var SALON_SLUG = (function(){
@@ -1233,6 +1254,7 @@ function renderOnboarding(){
 
 function renderLogin(){
   if(state.authView==='forgot') return renderForgotPassword();
+  if(state.authView==='register') return renderCreateAccount();
   var isNew = !state.authHasUsers;
   var migrate = isNew && state.authLegacyPassword;
   var sub = migrate ? t('auth_sub_migrate') : (isNew ? t('auth_sub_first') : t('auth_sub'));
@@ -1249,6 +1271,25 @@ function renderLogin(){
       (state.authError?'<p style="font-size:13px;color:var(--bad);margin-bottom:10px">'+esc(state.authError)+'</p>':'')+
       '<button type="submit" class="btn btn-primary" style="width:100%; margin-top:6px;"'+(state.authBusy?' disabled':'')+'>'+(isNew?t('onb_start'):t('auth_submit'))+'</button>'+
       (!isNew?'<button type="button" class="btn btn-ghost" data-action="auth-forgot" style="width:100%;margin-top:8px">'+t('auth_forgot_link')+'</button>':'')+
+      (!isNew?'<button type="button" class="btn btn-ghost" data-action="auth-show-register" style="width:100%;margin-top:8px">'+t('auth_create_account_link')+'</button>':'')+
+    '</form>'+
+  '</div></div>';
+}
+
+function renderCreateAccount(){
+  return '<div class="onboard-wrap"><div class="onboard-card">'+
+    '<div class="onboard-logo">'+ICONS.leaf+'<h1>'+esc(state.authSalonName||'KY Nature Beauty')+'</h1><p>'+t('auth_create_account_title')+'</p></div>'+
+    '<form id="create-account-form">'+
+      '<div class="field"><label>'+t('auth_fullname')+'</label><input required id="ca-fullname" placeholder="'+t('auth_fullname_ph')+'" autofocus></div>'+
+      '<div class="field"><label>'+t('onb_password')+'</label><input required type="password" minlength="4" id="ca-password"></div>'+
+      '<div class="field"><label>'+t('onb_password_confirm')+'</label><input required type="password" minlength="4" id="ca-password-confirm"></div>'+
+      '<div class="field"><label>'+t('onb_recovery_question')+'</label><input required id="ca-recovery-question" placeholder="'+t('onb_recovery_question_ph')+'"></div>'+
+      '<div class="field"><label>'+t('onb_recovery_answer')+'</label><input required id="ca-recovery-answer" placeholder="'+t('onb_recovery_answer_ph')+'"></div>'+
+      '<p style="font-size:12px;color:var(--text-faint);margin:-8px 0 14px">'+t('onb_recovery_hint')+'</p>'+
+      '<div class="field"><label>'+t('auth_captcha_label',{a:state.authCaptchaA,b:state.authCaptchaB})+'</label><input required type="number" id="ca-captcha"></div>'+
+      (state.authError?'<p style="font-size:13px;color:var(--bad);margin-bottom:10px">'+esc(state.authError)+'</p>':'')+
+      '<button type="submit" class="btn btn-primary" style="width:100%; margin-top:6px;"'+(state.authBusy?' disabled':'')+'>'+t('onb_start')+'</button>'+
+      '<button type="button" class="btn btn-ghost" data-action="auth-back-to-login" style="width:100%;margin-top:8px">'+t('auth_back_to_login')+'</button>'+
     '</form>'+
   '</div></div>';
 }
@@ -2098,6 +2139,39 @@ document.addEventListener('submit', function(e){
       state.authBusy = false; state.authError = t('chat_error_generic'); render();
     });
   }
+  if(e.target.id==='create-account-form'){
+    e.preventDefault();
+    var caName = document.getElementById('ca-fullname').value.trim();
+    var caPw = document.getElementById('ca-password').value;
+    var caPwConfirm = document.getElementById('ca-password-confirm').value;
+    if(caPw !== caPwConfirm){
+      state.authError = t('auth_password_mismatch'); render();
+      return;
+    }
+    var caAnswer = parseInt(document.getElementById('ca-captcha').value, 10);
+    if(caAnswer !== state.authCaptchaA + state.authCaptchaB){
+      state.authError = t('auth_captcha_wrong'); render();
+      return;
+    }
+    var caQuestion = document.getElementById('ca-recovery-question').value.trim();
+    var caRecoveryAnswer = document.getElementById('ca-recovery-answer').value.trim();
+    state.authBusy = true; state.authError = null; render();
+    Data.register({fullName:caName, password:caPw, recoveryQuestion:caQuestion, recoveryAnswer:caRecoveryAnswer}).then(function(res){
+      if(!res.ok){
+        state.authBusy = false;
+        state.authError = res.body && res.body.error==='name_taken' ? t('auth_name_taken') : authErrorMessage(res, 'chat_error_generic');
+        render();
+        return;
+      }
+      saveToken(res.body.token);
+      state.authRequired = false; state.authBusy = false; state.authError = null;
+      state.authView = 'login';
+      render();
+      startApp();
+    }).catch(function(){
+      state.authBusy = false; state.authError = t('chat_error_generic'); render();
+    });
+  }
   if(e.target.id==='settings-form'){
     e.preventDefault();
     var patch = {
@@ -2278,6 +2352,12 @@ document.addEventListener('click', function(e){
   else if(action==='capture-skin'){ captureSkinTone(); }
   else if(action==='upload-photo-trigger'){ var fi=document.getElementById('skin-photo-input'); if(fi) fi.click(); }
   else if(action==='auth-forgot'){ state.authView='forgot'; state.authForgotStep='name'; state.authError=null; render(); }
+  else if(action==='auth-show-register'){
+    state.authView='register'; state.authError=null;
+    state.authCaptchaA = 1 + Math.floor(Math.random()*8);
+    state.authCaptchaB = 1 + Math.floor(Math.random()*8);
+    render();
+  }
   else if(action==='auth-back-to-login'){ state.authView='login'; state.authForgotStep='name'; state.authError=null; render(); }
   else if(action==='logout'){ saveToken(null); unsubs.forEach(function(fn){ fn(); }); unsubs=[]; state.ready=true; state.config=null; state.authRequired=true; state.authView='login'; render(); }
   else if(action==='toggle-music'){

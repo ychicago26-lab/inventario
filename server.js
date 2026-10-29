@@ -174,13 +174,10 @@ app.get('/api/:slug/public', async (req, res) => {
   }
 });
 
-// Creates a user account. Three cases:
-//  - brand-new salon (no users yet, no legacy password): anyone can create
-//    the first account (this is the owner, right after onboarding).
-//  - legacy salon (no users yet, but has an old shared passwordHash): must
-//    prove the old password once, then this becomes the first named user.
-//  - salon that already has users: only an already signed-in user may add
-//    a new teammate.
+// Creates a user account. Anyone may self-register for any salon (open
+// sign-up, by explicit choice of the salon owner) — the only exception is
+// a legacy salon still on the old shared password, which must prove that
+// password once before its first named account can be created.
 app.post('/api/:slug/register', authLimiter, async (req, res) => {
   try {
     const slug = req.params.slug;
@@ -192,10 +189,7 @@ app.post('/api/:slug/register', authLimiter, async (req, res) => {
       return res.status(400).json({ error: 'invalid_request' });
     }
     const users = await getUsers(slug);
-    if (users.length > 0) {
-      const authData = verifyToken(getBearerToken(req), slug);
-      if (!authData) return res.status(401).json({ error: 'unauthorized' });
-    } else {
+    if (users.length === 0) {
       const cfg = await getConfig(slug);
       if (cfg && cfg.passwordHash) {
         if (!oldPassword || !verifyPassword(oldPassword, cfg.passwordHash)) {
