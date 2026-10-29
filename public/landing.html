@@ -189,6 +189,43 @@ footer{background:var(--bg-raised);border-top:1px solid var(--line);padding-bloc
 .music-toggle span{font-size:13px;font-family:var(--sans);white-space:nowrap}
 @media (max-width:540px){ .music-toggle span{display:none} .music-toggle{padding:14px} }
 
+/* ---------- chat widget ---------- */
+.chat-fab{
+  position:fixed;right:max(20px,env(safe-area-inset-right,0px));bottom:max(20px,env(safe-area-inset-bottom,0px));z-index:46;
+  width:58px;height:58px;border-radius:50%;background:var(--accent);color:#1a1510;border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;box-shadow:0 10px 30px rgba(0,0,0,.4);transition:transform .15s;
+}
+.chat-fab:hover{background:var(--accent-soft)}
+.chat-fab:active{transform:scale(.94)}
+.chat-panel{
+  position:fixed;right:max(20px,env(safe-area-inset-right,0px));bottom:max(90px,calc(90px + env(safe-area-inset-bottom,0px)));z-index:46;
+  width:340px;max-width:calc(100vw - 40px);height:460px;max-height:calc(100vh - 140px);
+  background:var(--bg-raised);border:1px solid var(--line);border-radius:16px;
+  display:none;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5);
+}
+.chat-panel.open{display:flex}
+.chat-head{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
+.chat-head strong{font-family:var(--serif);font-size:18px;font-weight:500}
+.chat-head button{background:none;border:none;color:var(--muted);cursor:pointer;padding:4px}
+.chat-body{flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.chat-msg{font-size:14px;line-height:1.5;max-width:85%;padding:10px 13px;border-radius:12px}
+.chat-msg.bot{background:#201a14;color:var(--fg);align-self:flex-start;border-bottom-left-radius:4px}
+.chat-msg.user{background:var(--accent);color:#1a1510;align-self:flex-end;border-bottom-right-radius:4px}
+.chat-form{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line)}
+.chat-form input{
+  flex:1;background:#1c1712;border:1px solid var(--line);color:var(--fg);border-radius:999px;
+  padding:10px 16px;font-family:var(--sans);font-size:14px;outline:none;
+}
+.chat-form input:focus{border-color:var(--accent)}
+.chat-form button{
+  width:40px;height:40px;border-radius:50%;background:var(--accent);border:none;color:#1a1510;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;flex:none;
+}
+@media (max-width:540px){
+  .chat-panel{right:16px;left:16px;width:auto;bottom:86px}
+  .chat-fab{right:16px}
+}
+
 /* ---------- responsive ---------- */
 @media (max-width:860px){
   .nav-links,.nav-actions .btn-ghost{display:none}
@@ -423,6 +460,25 @@ footer{background:var(--bg-raised);border-top:1px solid var(--line);padding-bloc
   </footer>
 </main>
 
+<button class="chat-fab" id="chatFab" type="button" aria-label="Preguntar al asistente">
+  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 12c0-4.4 3.8-8 8.5-8S21 7.6 21 12s-3.8 8-8.5 8c-1 0-2-.15-2.9-.43L5 21l1.1-3.8C4.8 15.9 4 14 4 12Z"/></svg>
+</button>
+<div class="chat-panel" id="chatPanel">
+  <div class="chat-head">
+    <strong>Pregúntale a KY Nature Beauty</strong>
+    <button id="chatClose" aria-label="Cerrar chat">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </div>
+  <div class="chat-body" id="chatBody"></div>
+  <form class="chat-form" id="chatForm">
+    <input id="chatInput" placeholder="Escribe tu pregunta…" autocomplete="off">
+    <button type="submit" aria-label="Enviar">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 3 3 10.5l7 2.5 2.5 7L21 3Z"/></svg>
+    </button>
+  </form>
+</div>
+
 <button class="music-toggle" id="musicToggle" type="button" aria-pressed="false" aria-label="Reproducir música relajante">
   <svg class="icon-note" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
   <svg class="icon-pause" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
@@ -459,6 +515,78 @@ footer{background:var(--bg-raised);border-top:1px solid var(--line);padding-bloc
     musicBtn.setAttribute('aria-pressed', String(playing));
     label.textContent = playing ? 'Pausar música' : 'Música relajante';
     musicBtn.setAttribute('aria-label', playing ? 'Pausar música relajante' : 'Reproducir música relajante');
+  });
+
+  /* ---------- chat assistant (local, no server, no login needed) ---------- */
+  var TOPICS = [
+    { keys:['precio','costo','cuanto','cuesta','tarifa'],
+      text:'Los precios varían según el servicio y lo que necesites. Escríbenos por WhatsApp al 773-241-1224 y con gusto te damos un precio exacto.' },
+    { keys:['cita','reservar','agendar','appointment','turno'],
+      text:'Para reservar tu cita, escríbenos por WhatsApp al 773-241-1224 o al correo nailskybeauty2021@gmail.com, y te confirmamos el horario disponible.' },
+    { keys:['cabello','corte','color','balayage','rayos','fantasia','permanente','tinte'],
+      text:'En cabello ofrecemos: corte de cabello para dama y para caballero, color, balayage, rayos, colores de fantasía, y permanente para dama y para caballero. Los cortes se hacen según tus facciones (visagismo) o tu gusto personal.' },
+    { keys:['facial','piel','rostro','cutis'],
+      text:'Nuestros faciales profesionales se adaptan a cada tipo de piel, trabajando con colágeno, máquinas LED o aparatología/galvánicas, y mascarillas orgánicas de calidad spa.' },
+    { keys:['maquillaje','makeup'],
+      text:'Ofrecemos maquillaje profesional para cualquier ocasión.' },
+    { keys:['uña','uñas','manicure','acrilico','gel'],
+      text:'En uñas trabajamos acrílico, no-chip y tech gel, con diseños personalizados hechos a tu gusto.' },
+    { keys:['masaje','bienestar','relajante','piedras','ventosa','spa'],
+      text:'Nuestros masajes (relajante, de piedras calientes y con ventosas) duran de 45 minutos a una hora, en un ambiente relajante con aromaterapia.' },
+    { keys:['horario','hora','abren','cierran','atencion'],
+      text:'Nuestro horario es lunes a viernes de 9:00 am a 7:00 pm, sábados de 9:00 am a 5:00 pm, y domingos cerrado.' },
+    { keys:['ubicacion','direccion','donde','local','cicero'],
+      text:'Estamos en Cicero, Illinois.' },
+    { keys:['contacto','telefono','whatsapp','correo','email'],
+      text:'Puedes contactarnos al 773-241-1224 (teléfono y WhatsApp), o al correo nailskybeauty2021@gmail.com.' },
+    { keys:['servicio','servicios','ofrecen','hacen'],
+      text:'Ofrecemos servicios de cabello (cortes, color, balayage, rayos, colores de fantasía, permanentes), faciales profesionales, maquillaje, uñas personalizadas, y masajes de bienestar. Pregúntame por cualquiera de ellos para más detalle.' }
+  ];
+  var JOKE = 'Esa todavía no la sé responder a fondo, pero aquí va un chiste mientras tanto: ¿por qué el peine siempre anda triste? Porque lo dejan hecho un lío. Mientras tanto, pregúntame sobre servicios, faciales, cortes, masajes, uñas, horario, ubicación o cómo reservar tu cita.';
+
+  function localAnswer(question){
+    var q = question.toLowerCase();
+    for(var i=0;i<TOPICS.length;i++){
+      for(var j=0;j<TOPICS[i].keys.length;j++){
+        if(q.indexOf(TOPICS[i].keys[j]) !== -1) return TOPICS[i].text;
+      }
+    }
+    return JOKE;
+  }
+
+  var chatFab = document.getElementById('chatFab');
+  var chatPanel = document.getElementById('chatPanel');
+  var chatClose = document.getElementById('chatClose');
+  var chatBody = document.getElementById('chatBody');
+  var chatForm = document.getElementById('chatForm');
+  var chatInput = document.getElementById('chatInput');
+  var chatStarted = false;
+
+  function addMsg(text, who){
+    var div = document.createElement('div');
+    div.className = 'chat-msg ' + who;
+    div.textContent = text;
+    chatBody.appendChild(div);
+    chatBody.scrollTop = chatBody.scrollHeight;
+  }
+
+  chatFab.addEventListener('click', function(){
+    chatPanel.classList.add('open');
+    if(!chatStarted){
+      chatStarted = true;
+      addMsg('Hola, soy el asistente de KY Nature Beauty. Pregúntame sobre nuestros servicios, horario, ubicación o cómo reservar tu cita.', 'bot');
+    }
+    chatInput.focus();
+  });
+  chatClose.addEventListener('click', function(){ chatPanel.classList.remove('open'); });
+
+  chatForm.addEventListener('submit', function(e){
+    e.preventDefault();
+    var question = chatInput.value.trim();
+    if(!question) return;
+    addMsg(question, 'user');
+    chatInput.value = '';
+    setTimeout(function(){ addMsg(localAnswer(question), 'bot'); }, 350);
   });
 })();
 </script>

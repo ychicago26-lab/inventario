@@ -174,18 +174,24 @@ app.get('/api/:slug/public', async (req, res) => {
   }
 });
 
-// Creates a user account. Anyone may self-register for any salon (open
-// sign-up, by explicit choice of the salon owner) — the only exception is
-// a legacy salon still on the old shared password, which must prove that
-// password once before its first named account can be created.
+// Creates a user account. Three cases:
+//  - brand-new salon (no users yet, no legacy password): anyone can create
+//    the first account (this is the owner, right after onboarding).
+//  - legacy salon (no users yet, but has an old shared passwordHash): must
+//    prove the old password once, then this becomes the first named user.
+//  - salon that already has users: needs either a valid session (an
+//    already-signed-in user adding a teammate from Settings) or the
+//    salon's own invite code, which the owner sets in Settings and shares
+//    directly with trusted staff. No code set means registration is closed
+//    to anyone not already signed in.
 app.post('/api/:slug/register', authLimiter, async (req, res) => {
   try {
     const slug = req.params.slug;
-    const { fullName, password, recoveryQuestion, recoveryAnswer, oldPassword } = req.body || {};
+    const { fullName, password, recoveryQuestion, recoveryAnswer, oldPassword, inviteCode } = req.body || {};
     if (!fullName || !fullName.trim() || !password || password.length < 4 || !recoveryQuestion || !recoveryAnswer) {
       return res.status(400).json({ error: 'invalid_request' });
     }
-    if (isTooLong(fullName, 120) || isTooLong(password, 200) || isTooLong(recoveryQuestion, 300) || isTooLong(recoveryAnswer, 300) || isTooLong(oldPassword, 200)) {
+    if (isTooLong(fullName, 120) || isTooLong(password, 200) || isTooLong(recoveryQuestion, 300) || isTooLong(recoveryAnswer, 300) || isTooLong(oldPassword, 200) || isTooLong(inviteCode, 100)) {
       return res.status(400).json({ error: 'invalid_request' });
     }
     const users = await getUsers(slug);
@@ -195,6 +201,13 @@ app.post('/api/:slug/register', authLimiter, async (req, res) => {
         if (!oldPassword || !verifyPassword(oldPassword, cfg.passwordHash)) {
           return res.status(401).json({ error: 'invalid_password' });
         }
+      }
+    } else {
+      const cfg = await getConfig(slug);
+      const validInvite = !!(cfg && cfg.inviteCode && inviteCode && inviteCode === cfg.inviteCode);
+      if (!validInvite) {
+        const authData = verifyToken(getBearerToken(req), slug);
+        if (!authData) return res.status(401).json({ error: 'unauthorized' });
       }
     }
     if (findUserByName(users, fullName)) {
