@@ -1133,7 +1133,7 @@ function renderApp(){
   html += '<div class="main">';
   html += '<div class="topbar">';
   html += '<div class="brand" style="color:var(--gold-soft)">'+ICONS.leaf+'<div class="brand-name" style="font-size:17px">'+esc(state.config.name)+'</div></div>';
-  html += '<div style="display:flex;align-items:center;gap:8px">'+renderLangSelect('top')+'<button class="icon-btn" data-action="tab" data-tab="dashboard">'+ICONS.bell+(alerts.length?'<span class="badge-dot">'+alerts.length+'</span>':'')+'</button></div>';
+  html += '<div style="display:flex;align-items:center;gap:8px">'+renderLangSelect('top')+'<button class="icon-btn" data-action="toggle-music" aria-label="'+(state.musicPlaying?t('music_pause'):t('music_play'))+'">'+(state.musicPlaying?ICONS.pause:ICONS.note)+'</button><button class="icon-btn" data-action="tab" data-tab="dashboard">'+ICONS.bell+(alerts.length?'<span class="badge-dot">'+alerts.length+'</span>':'')+'</button></div>';
   html += '</div>';
   html += '<div class="content">';
   html += renderTab();
