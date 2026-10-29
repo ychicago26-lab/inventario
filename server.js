@@ -523,12 +523,21 @@ app.delete('/api/:slug/:collection/:id', requireAuth, async (req, res) => {
 });
 
 app.get('/healthz', (req, res) => res.status(200).send('ok'));
-app.use(express.static(path.join(__dirname, 'public')));
+// index:false — otherwise this would auto-serve public/index.html for GET /,
+// before our own "/" route below ever runs, and the landing page would
+// never be reachable.
+app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 app.get('/s/:slug', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
-app.get('/', (req, res) => {
+// Public marketing page. New-salon onboarding (previously at "/") moved to
+// "/nuevo" since the client-side app treats any path other than "/s/:slug"
+// as "no salon yet" and shows the onboarding screen either way.
+app.get('/nuevo', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'landing.html'));
 });
 
 function errorPage(code, title, message) {

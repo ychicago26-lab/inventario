@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>KY Nature Beauty</title>
+<meta name="description" content="Salón de belleza y spa en Cicero, Illinois: cabello, piel, uñas y bienestar en un mismo espacio.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="KY Nature Beauty">
+<meta property="og:description" content="Más que belleza, una experiencia para ti. Cabello, piel, uñas y bienestar en Cicero, Illinois.">
+<meta property="og:image" content="/images/hero.jpg">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="theme-color" content="#110d0a">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,500&family=Jost:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/*
+  Layout concept: a tall editorial hero (full-bleed portrait photo, text
+  over a soft gradient) gives way to a quiet, menu-like services list set
+  in a warm near-black field with gold rule lines — closer to a spa's
+  printed treatment card than a web template — then a wide image band,
+  an asymmetric transformations gallery, and a dark contact footer.
+*/
+:root{
+  --bg:#110d0a;
+  --bg-raised:#17120e;
+  --fg:#f4ece0;
+  --muted:#b8a98f;
+  --accent:#c8a35f;
+  --accent-soft:#e8cf99;
+  --line:rgba(200,163,95,.22);
+  --serif:'Cormorant Garamond',Georgia,'Times New Roman',serif;
+  --sans:'Jost',-apple-system,Segoe UI,Helvetica,Arial,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:auto}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--fg);
+  font-family:var(--sans);
+  font-size:16px;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+@media (prefers-reduced-motion:no-preference){ html{scroll-behavior:smooth} }
+img{max-width:100%;display:block}
+h1,h2,h3{font-family:var(--serif);font-weight:500;text-wrap:balance;margin:0}
+p{margin:0}
+a{color:inherit}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
+.eyebrow{
+  font-family:var(--sans);font-size:12.5px;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--accent);font-weight:500;
+}
+
+/* ---------- header ---------- */
+header{
+  position:sticky;top:env(safe-area-inset-top,0px);z-index:40;
+  background:rgba(17,13,10,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);
+}
+.nav{display:flex;align-items:center;justify-content:space-between;padding-block:16px}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--serif);font-size:21px;letter-spacing:.02em}
+.brand svg{flex:none}
+.nav-links{display:flex;gap:34px;list-style:none;margin:0;padding:0;font-size:14.5px}
+.nav-links a{text-decoration:none;color:var(--muted);transition:color .2s}
+.nav-links a:hover{color:var(--accent-soft)}
+.nav-actions{display:flex;align-items:center;gap:14px}
+.btn{
+  display:inline-flex;align-items:center;gap:8px;white-space:nowrap;
+  font-family:var(--sans);font-size:14px;font-weight:500;letter-spacing:.02em;
+  padding:11px 22px;border-radius:999px;text-decoration:none;cursor:pointer;
+  border:1px solid transparent;transition:transform .15s ease,background .2s,border-color .2s,color .2s;
+}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--accent);color:#1a1510}
+.btn-primary:hover{background:var(--accent-soft)}
+.btn-ghost{border-color:var(--line);color:var(--fg)}
+.btn-ghost:hover{border-color:var(--accent)}
+.menu-toggle{display:none;background:none;border:1px solid var(--line);color:var(--fg);border-radius:10px;padding:9px 11px}
+.mobile-panel{display:none}
+
+/* ---------- hero ---------- */
+.hero{position:relative;min-height:84vh;display:flex;align-items:flex-end;overflow:hidden}
+.hero-media{position:absolute;inset:0}
+.hero-media img{width:100%;height:100%;object-fit:cover;object-position:center 30%}
+.hero-media::after{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(13,10,8,.35) 0%,rgba(13,10,8,.35) 35%,rgba(13,10,8,.92) 92%),
+             linear-gradient(90deg,rgba(13,10,8,.75) 0%,rgba(13,10,8,.1) 55%);
+}
+.hero-content{position:relative;padding-block:72px 64px;max-width:640px}
+.hero-content .eyebrow{margin-bottom:18px;display:block}
+.hero-content h1{font-size:clamp(38px,6vw,64px);line-height:1.08;color:var(--fg)}
+.hero-content h1 em{font-style:italic;color:var(--accent-soft)}
+.hero-content p{margin-top:22px;font-size:18px;color:var(--muted);max-width:50ch}
+.hero-cta{display:flex;flex-wrap:wrap;gap:14px;margin-top:34px}
+
+/* ---------- welcome / intro ---------- */
+.intro{padding-block:96px 72px;text-align:center}
+.intro .eyebrow{display:block;margin-bottom:18px}
+.intro h2{font-size:clamp(30px,4.2vw,46px);max-width:16ch;margin-inline:auto}
+.intro p{margin-top:24px;max-width:62ch;margin-inline:auto;color:var(--muted);font-size:17.5px}
+
+/* ---------- services ---------- */
+.services{padding-block:20px 96px}
+.services-head{display:flex;align-items:baseline;justify-content:space-between;gap:24px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:28px;margin-bottom:12px}
+.services-head h2{font-size:clamp(28px,4vw,42px)}
+.services-head .eyebrow{display:block;margin-bottom:10px}
+.menu-note{color:var(--muted);font-size:14.5px;max-width:34ch}
+.menu-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:0}
+.menu-group{padding:34px 0;border-bottom:1px solid var(--line)}
+.menu-group:nth-child(odd){padding-right:40px}
+.menu-group:nth-child(even){padding-left:40px;border-left:1px solid var(--line)}
+.menu-group h3{font-size:22px;color:var(--accent-soft);margin-bottom:6px}
+.menu-group .menu-desc{color:var(--muted);font-size:14.5px;margin-bottom:20px;max-width:46ch}
+.menu-items{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:13px}
+.menu-items li{display:flex;align-items:baseline;gap:10px;font-size:17px}
+.menu-items li::before{content:"";flex:none;width:5px;height:5px;border-radius:50%;background:var(--accent);margin-bottom:3px}
+
+/* ---------- spa experience band ---------- */
+.spa-band{position:relative;padding-block:120px;margin-block:0;overflow:hidden}
+.spa-media{position:absolute;inset:0}
+.spa-media img{width:100%;height:100%;object-fit:cover}
+.spa-media::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(13,10,8,.94) 0%,rgba(13,10,8,.72) 48%,rgba(13,10,8,.3) 100%)}
+.spa-content{position:relative;max-width:560px}
+.spa-content .eyebrow{display:block;margin-bottom:18px}
+.spa-content h2{font-size:clamp(32px,4.6vw,50px);margin-bottom:26px}
+.spa-content p{color:var(--muted);font-size:17.5px;margin-bottom:16px;max-width:52ch}
+.spa-content p.lead{color:var(--fg);font-size:19px;font-family:var(--serif);font-style:italic}
+
+/* ---------- gallery ---------- */
+.gallery{padding-block:100px}
+.gallery-head{text-align:center;margin-bottom:56px}
+.gallery-head .eyebrow{display:block;margin-bottom:16px}
+.gallery-head h2{font-size:clamp(30px,4.2vw,46px)}
+.gallery-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:18px}
+.g-item{position:relative;border-radius:4px;overflow:hidden;min-width:0}
+.g-item img{width:100%;height:100%;object-fit:cover;transition:transform .5s ease}
+.g-item:hover img{transform:scale(1.05)}
+.g-item::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 55%,rgba(10,8,6,.88) 100%)}
+.g-caption{position:absolute;left:18px;right:18px;bottom:16px;z-index:1}
+.g-caption .eyebrow{color:var(--accent-soft);font-size:11px;display:block;margin-bottom:4px}
+.g-caption strong{font-family:var(--serif);font-size:19px;font-weight:500}
+.g-item.g-wide{grid-column:span 3;aspect-ratio:4/3}
+.g-item.g-tall{grid-column:span 2;aspect-ratio:3/4}
+
+/* ---------- contact / footer ---------- */
+footer{background:var(--bg-raised);border-top:1px solid var(--line);padding-block:88px 40px}
+.foot-top{display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr;gap:48px;padding-bottom:64px}
+.foot-brand .brand{margin-bottom:18px}
+.foot-brand p{color:var(--muted);font-size:15px;max-width:34ch}
+.foot-social{display:flex;gap:10px;margin-top:24px}
+.foot-social a{
+  width:40px;height:40px;border-radius:50%;border:1px solid var(--line);
+  display:flex;align-items:center;justify-content:center;text-decoration:none;color:var(--muted);
+  transition:border-color .2s,color .2s;
+}
+.foot-social a:hover{border-color:var(--accent);color:var(--accent-soft)}
+.foot-col h4{font-family:var(--sans);font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-soft);margin-bottom:18px;font-weight:600}
+.foot-col ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:13px;font-size:15px;color:var(--muted)}
+.foot-col ul a{text-decoration:none;color:var(--muted);transition:color .2s}
+.foot-col ul a:hover{color:var(--accent-soft)}
+.foot-row-label{display:block;font-size:12px;color:#8a7c67;margin-bottom:2px}
+.foot-bottom{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;padding-top:28px;border-top:1px solid var(--line);font-size:13px;color:#8a7c67}
+.placeholder-note{font-size:12.5px;color:#8a7c67;max-width:60ch;margin:0 auto 28px;text-align:center;border:1px dashed var(--line);border-radius:10px;padding:12px 16px}
+
+/* ---------- music toggle ---------- */
+.music-toggle{
+  position:fixed;
+  left:max(20px,env(safe-area-inset-left,0px));
+  bottom:max(20px,env(safe-area-inset-bottom,0px));
+  z-index:45;
+  display:flex;align-items:center;gap:10px;
+  background:var(--bg-raised);border:1px solid var(--line);color:var(--fg);
+  border-radius:999px;padding:12px 18px 12px 14px;cursor:pointer;
+  box-shadow:0 10px 30px rgba(0,0,0,.35);
+  transition:border-color .2s,transform .15s;
+}
+.music-toggle:hover{border-color:var(--accent)}
+.music-toggle:active{transform:scale(.96)}
+.music-toggle svg{flex:none;color:var(--accent)}
+.music-toggle .icon-pause{display:none}
+.music-toggle.is-playing .icon-note{display:none}
+.music-toggle.is-playing .icon-pause{display:block}
+.music-toggle span{font-size:13px;font-family:var(--sans);white-space:nowrap}
+@media (max-width:540px){ .music-toggle span{display:none} .music-toggle{padding:14px} }
+
+/* ---------- responsive ---------- */
+@media (max-width:860px){
+  .nav-links,.nav-actions .btn-ghost{display:none}
+  .menu-toggle{display:inline-flex;align-items:center;justify-content:center}
+  .mobile-panel.open{display:flex}
+  .mobile-panel{
+    position:fixed;inset:0;top:0;z-index:50;background:var(--bg);
+    flex-direction:column;padding:24px max(20px,env(safe-area-inset-left,0px)) max(24px,env(safe-area-inset-bottom,0px)) max(20px,env(safe-area-inset-right,0px));
+    padding-top:max(24px,env(safe-area-inset-top,0px));
+  }
+  .mobile-panel .nav{border-bottom:1px solid var(--line);margin-bottom:28px;padding-block:0 20px}
+  .mobile-panel ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:26px;font-family:var(--serif);font-size:26px}
+  .mobile-panel ul a{text-decoration:none;color:var(--fg)}
+  .mobile-panel .btn{margin-top:32px;justify-content:center}
+  .menu-grid{grid-template-columns:1fr}
+  .menu-group:nth-child(even){padding-left:0;border-left:none}
+  .menu-group:nth-child(odd){padding-right:0}
+  .gallery-grid{grid-template-columns:repeat(2,1fr)}
+  .g-item.g-wide,.g-item.g-tall{grid-column:span 1;aspect-ratio:4/3}
+  .foot-top{grid-template-columns:1fr 1fr;row-gap:40px}
+  .spa-band{padding-block:80px}
+}
+@media (max-width:540px){
+  .foot-top{grid-template-columns:1fr}
+  .hero{min-height:92vh}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a href="#inicio" class="brand" aria-label="KY Nature Beauty — inicio">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M12 21c-4-3-7-7-7-11a7 7 0 0 1 14 0c0 4-3 8-7 11Z"/><path d="M12 10c0-3 2-5 5-6"/></svg>
+      KY Nature Beauty
+    </a>
+    <nav>
+      <ul class="nav-links">
+        <li><a href="#servicios">Servicios</a></li>
+        <li><a href="#experiencia">Experiencia</a></li>
+        <li><a href="#galeria">Galería</a></li>
+        <li><a href="#contacto">Contacto</a></li>
+      </ul>
+    </nav>
+    <div class="nav-actions">
+      <a class="btn btn-ghost" href="#contacto">Reservar cita</a>
+      <a class="btn btn-primary" href="/s/ky-nature-beauty-2g5w">Iniciar sesión</a>
+      <button class="menu-toggle" id="menuToggle" aria-label="Abrir menú" aria-expanded="false">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="mobile-panel" id="mobilePanel">
+    <div class="wrap nav">
+      <a href="#inicio" class="brand">KY Nature Beauty</a>
+      <button class="menu-toggle" id="menuClose" aria-label="Cerrar menú">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <ul>
+      <li><a href="#servicios">Servicios</a></li>
+      <li><a href="#experiencia">Experiencia</a></li>
+      <li><a href="#galeria">Galería</a></li>
+      <li><a href="#contacto">Contacto</a></li>
+    </ul>
+    <a class="btn btn-primary" href="/s/ky-nature-beauty-2g5w">Iniciar sesión</a>
+  </div>
+</header>
+
+<main>
+  <section class="hero" id="inicio">
+    <div class="hero-media">
+      <img src="/images/hero.jpg" alt="Estilista atendiendo a una clienta frente a un espejo con luces cálidas">
+    </div>
+    <div class="wrap hero-content">
+      <span class="eyebrow">KY Nature Beauty</span>
+      <h1>Más que belleza,<br><em>una experiencia</em> para ti</h1>
+      <p>Cabello, piel, uñas y bienestar en un mismo espacio, pensado para que cada visita se sienta como un respiro.</p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="#contacto">Reservar una cita</a>
+        <a class="btn btn-ghost" href="#servicios">Ver servicios</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="intro wrap">
+    <span class="eyebrow">Bienvenida</span>
+    <h2>Un lugar donde cuidarte es lo único que tienes que hacer</h2>
+    <p>En KY Nature Beauty combinamos técnica, productos de calidad spa y un trato cercano para que salgas viéndote — y sintiéndote — como quien realmente eres. Esta es la lista completa de lo que hacemos por ti.</p>
+  </section>
+
+  <section class="services wrap" id="servicios">
+    <div class="services-head">
+      <div>
+        <span class="eyebrow">Nuestros servicios</span>
+        <h2>La carta de tratamientos</h2>
+      </div>
+      <p class="menu-note">Todos nuestros servicios se adaptan a tus necesidades particulares, nunca a una fórmula única.</p>
+    </div>
+    <div class="menu-grid">
+      <div class="menu-group">
+        <h3>Cabello</h3>
+        <p class="menu-desc">Cortes según tus facciones (visagismo) o tu gusto personal, y color en todas sus formas.</p>
+        <ul class="menu-items">
+          <li>Corte de cabello para dama</li>
+          <li>Corte de cabello para caballero</li>
+          <li>Color</li>
+          <li>Balayage</li>
+          <li>Rayos</li>
+          <li>Colores de fantasía</li>
+          <li>Permanente para dama</li>
+          <li>Permanente para caballero</li>
+        </ul>
+      </div>
+      <div class="menu-group">
+        <h3>Rostro y piel</h3>
+        <p class="menu-desc">Faciales a la medida de cada tipo de piel, con colágeno, máquinas LED o aparatología/galvánicas y mascarillas orgánicas.</p>
+        <ul class="menu-items">
+          <li>Faciales profesionales</li>
+          <li>Maquillaje profesional</li>
+        </ul>
+      </div>
+      <div class="menu-group">
+        <h3>Uñas</h3>
+        <p class="menu-desc">Acrílico, no-chip y tech gel, con diseños personalizados hechos a tu gusto.</p>
+        <ul class="menu-items">
+          <li>Uñas personalizadas</li>
+        </ul>
+      </div>
+      <div class="menu-group">
+        <h3>Bienestar</h3>
+        <p class="menu-desc">De 45 minutos a una hora, en un ambiente relajante con aromaterapia.</p>
+        <ul class="menu-items">
+          <li>Masaje relajante</li>
+          <li>Masaje de piedras calientes</li>
+          <li>Masaje con ventosas</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="spa-band" id="experiencia">
+    <div class="spa-media">
+      <img src="/images/spa.jpg" alt="Cama de masajes junto a un lavabo decorado con flores, ambiente de spa">
+    </div>
+    <div class="wrap spa-content">
+      <span class="eyebrow">Experiencia spa</span>
+      <h2>Regálate un momento para ti</h2>
+      <p class="lead">No es solo un tratamiento. Es el tiempo que decides apartar para ti misma.</p>
+      <p>Apaga el teléfono, respira el aroma de aceites esenciales y deja que nuestras manos hagan el resto. Cada sesión está pensada para devolverte algo que el día a día te quita: calma, color, brillo, una piel que se siente propia otra vez.</p>
+      <p>Porque antes de salir al mundo a cuidar de todo lo demás, mereces un espacio que te cuide a ti primero.</p>
+    </div>
+  </section>
+
+  <section class="gallery wrap" id="galeria">
+    <div class="gallery-head">
+      <span class="eyebrow">Galería</span>
+      <h2>Transformaciones</h2>
+    </div>
+    <div class="gallery-grid">
+      <div class="g-item g-wide">
+        <img src="/images/hair.jpg" alt="Clienta recibiendo un servicio de color de cabello en salón elegante">
+        <div class="g-caption"><span class="eyebrow">01</span><strong>Color y cabello</strong></div>
+      </div>
+      <div class="g-item g-tall">
+        <img src="/images/nails.jpg" alt="Manicure rosa con acabado profesional">
+        <div class="g-caption"><span class="eyebrow">02</span><strong>Diseño de uñas</strong></div>
+      </div>
+      <div class="g-item g-tall">
+        <img src="/images/lashes.jpg" alt="Aplicación profesional de extensiones de pestañas">
+        <div class="g-caption"><span class="eyebrow">03</span><strong>Pestañas y cejas</strong></div>
+      </div>
+      <div class="g-item g-wide">
+        <img src="/images/facial.jpg" alt="Clienta recibiendo un tratamiento facial">
+        <div class="g-caption"><span class="eyebrow">04</span><strong>Tratamientos faciales</strong></div>
+      </div>
+      <div class="g-item g-wide" style="grid-column:span 6">
+        <img src="/images/wellness.jpg" alt="Sala de masajes con iluminación cálida y ambiente relajante">
+        <div class="g-caption"><span class="eyebrow">05</span><strong>Espacios de bienestar</strong></div>
+      </div>
+    </div>
+  </section>
+
+  <footer id="contacto">
+    <div class="wrap">
+      <p class="placeholder-note">Instagram y horario de atención todavía son de muestra — queda pendiente confirmarlos.</p>
+      <div class="foot-top">
+        <div class="foot-brand">
+          <a href="#inicio" class="brand">KY Nature Beauty</a>
+          <p>Un espacio de belleza y bienestar donde cada visita se siente como un regalo para ti misma.</p>
+          <div class="foot-social">
+            <a href="https://instagram.com" target="_blank" rel="noopener" aria-label="Instagram">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/></svg>
+            </a>
+            <a href="https://wa.me/17732411224" target="_blank" rel="noopener" aria-label="WhatsApp">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 20l1.3-4A8 8 0 1 1 9 19l-5 1Z"/><path d="M9 10c0 3 2.5 5 5 5"/></svg>
+            </a>
+            <a href="mailto:nailskybeauty2021@gmail.com" aria-label="Correo electrónico">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg>
+            </a>
+          </div>
+        </div>
+        <div class="foot-col">
+          <h4>Contacto</h4>
+          <ul>
+            <li><span class="foot-row-label">Teléfono</span><a href="tel:+17732411224">773-241-1224</a></li>
+            <li><span class="foot-row-label">WhatsApp</span><a href="https://wa.me/17732411224" target="_blank" rel="noopener">773-241-1224</a></li>
+            <li><span class="foot-row-label">Correo</span><a href="mailto:nailskybeauty2021@gmail.com">nailskybeauty2021@gmail.com</a></li>
+          </ul>
+        </div>
+        <div class="foot-col">
+          <h4>Ubicación</h4>
+          <ul>
+            <li>Cicero, Illinois</li>
+            <li><a href="https://instagram.com" target="_blank" rel="noopener">@kynaturebeauty</a></li>
+          </ul>
+        </div>
+        <div class="foot-col">
+          <h4>Horario</h4>
+          <ul>
+            <li>Lunes a viernes<br>9:00 am – 7:00 pm</li>
+            <li>Sábados<br>9:00 am – 5:00 pm</li>
+            <li>Domingos cerrado</li>
+          </ul>
+        </div>
+      </div>
+      <div class="foot-bottom">
+        <span>© 2026 KY Nature Beauty</span>
+        <a class="btn btn-ghost" href="/s/ky-nature-beauty-2g5w" style="padding:9px 18px;font-size:13px">Iniciar sesión</a>
+      </div>
+    </div>
+  </footer>
+</main>
+
+<button class="music-toggle" id="musicToggle" type="button" aria-pressed="false" aria-label="Reproducir música relajante">
+  <svg class="icon-note" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+  <svg class="icon-pause" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+  <span>Música relajante</span>
+</button>
+<audio id="bgAudio" loop preload="none">
+  <source src="/ambient.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+(function(){
+  "use strict";
+  var toggle = document.getElementById('menuToggle');
+  var close = document.getElementById('menuClose');
+  var panel = document.getElementById('mobilePanel');
+  function open(){ panel.classList.add('open'); toggle.setAttribute('aria-expanded','true'); }
+  function shut(){ panel.classList.remove('open'); toggle.setAttribute('aria-expanded','false'); }
+  if(toggle) toggle.addEventListener('click', open);
+  if(close) close.addEventListener('click', shut);
+  panel && panel.querySelectorAll('a').forEach(function(a){ a.addEventListener('click', shut); });
+
+  var musicBtn = document.getElementById('musicToggle');
+  var bgAudio = document.getElementById('bgAudio');
+  var label = musicBtn.querySelector('span');
+  var playing = false;
+  musicBtn.addEventListener('click', function(){
+    if(playing){
+      bgAudio.pause();
+    } else {
+      bgAudio.play().catch(function(){});
+    }
+    playing = !playing;
+    musicBtn.classList.toggle('is-playing', playing);
+    musicBtn.setAttribute('aria-pressed', String(playing));
+    label.textContent = playing ? 'Pausar música' : 'Música relajante';
+    musicBtn.setAttribute('aria-label', playing ? 'Pausar música relajante' : 'Reproducir música relajante');
+  });
+})();
+</script>
+</body>
+</html>
