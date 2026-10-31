@@ -471,7 +471,10 @@ Servicios que ofrece el salón:
 - Rostro y piel: faciales profesionales adaptados a cada tipo de piel, trabajando con colágeno, máquinas LED o aparatología/galvánicas, y mascarillas orgánicas de calidad spa.
 - Maquillaje profesional para cualquier ocasión.
 - Uñas personalizadas: acrílico, no-chip y tech gel, con diseños a la medida.
+- Pestañas y cejas: rizado de pestañas y planchado de cejas.
 - Bienestar: masaje relajante, masaje de piedras calientes y masaje con ventosas, de 45 minutos a una hora, en un ambiente relajante con aromaterapia.
+
+El salón también ofrece cursos personalizados de maquillaje, faciales profesionales, uñas, masajes y más, para quienes quieren aprender la técnica de manera profesional. Si preguntan por cursos o clases, responde que sí se ofrecen cursos personalizados en esas áreas y que, para más información, contacten directamente al salón.
 
 Horario: lunes a viernes de 9:00 am a 7:00 pm, sábados de 9:00 am a 5:00 pm, domingos cerrado.
 Ubicación: Cicero, Illinois.

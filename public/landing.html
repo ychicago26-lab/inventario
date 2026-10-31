@@ -210,6 +210,14 @@ footer{background:var(--bg-raised);border-top:1px solid var(--line);padding-bloc
 .booking-success p{color:var(--muted);font-size:14.5px}
 @media (max-width:540px){ .b-row{grid-template-columns:1fr} .booking-card{padding:28px 20px} }
 
+/* ---------- courses ---------- */
+.courses{padding-block:30px 100px}
+.courses-card{max-width:620px;margin:0 auto;text-align:center;background:var(--bg-raised);border:1px solid var(--line);border-radius:18px;padding:48px 40px}
+.courses-card .eyebrow{display:block;margin-bottom:14px}
+.courses-card h2{font-size:clamp(26px,3.6vw,36px);margin-bottom:16px}
+.courses-sub{color:var(--muted);font-size:15.5px;max-width:48ch;margin:0 auto 26px}
+@media (max-width:540px){ .courses-card{padding:32px 22px} }
+
 /* ---------- chat widget ---------- */
 .chat-fab{
   position:fixed;right:max(20px,env(safe-area-inset-right,0px));bottom:max(20px,env(safe-area-inset-bottom,0px));z-index:46;
@@ -288,6 +296,7 @@ footer{background:var(--bg-raised);border-top:1px solid var(--line);padding-bloc
         <li><a href="#servicios">Servicios</a></li>
         <li><a href="#experiencia">Experiencia</a></li>
         <li><a href="#galeria">Galería</a></li>
+        <li><a href="#cursos">Cursos</a></li>
         <li><a href="#contacto">Contacto</a></li>
       </ul>
     </nav>
@@ -310,6 +319,7 @@ footer{background:var(--bg-raised);border-top:1px solid var(--line);padding-bloc
       <li><a href="#servicios">Servicios</a></li>
       <li><a href="#experiencia">Experiencia</a></li>
       <li><a href="#galeria">Galería</a></li>
+      <li><a href="#cursos">Cursos</a></li>
       <li><a href="#reservar">Reservar cita</a></li>
       <li><a href="#contacto">Contacto</a></li>
     </ul>
@@ -378,6 +388,14 @@ footer{background:var(--bg-raised);border-top:1px solid var(--line);padding-bloc
         </ul>
       </div>
       <div class="menu-group">
+        <h3>Pestañas y cejas</h3>
+        <p class="menu-desc">Realza tu mirada de forma natural, sin necesidad de extensiones.</p>
+        <ul class="menu-items">
+          <li>Rizado de pestañas</li>
+          <li>Planchado de cejas</li>
+        </ul>
+      </div>
+      <div class="menu-group">
         <h3>Bienestar</h3>
         <p class="menu-desc">De 45 minutos a una hora, en un ambiente relajante con aromaterapia.</p>
         <ul class="menu-items">
@@ -418,6 +436,10 @@ footer{background:var(--bg-raised);border-top:1px solid var(--line);padding-bloc
             </optgroup>
             <optgroup label="Uñas">
               <option>Uñas personalizadas</option>
+            </optgroup>
+            <optgroup label="Pestañas y cejas">
+              <option>Rizado de pestañas</option>
+              <option>Planchado de cejas</option>
             </optgroup>
             <optgroup label="Bienestar">
               <option>Masaje relajante</option>
@@ -480,6 +502,15 @@ footer{background:var(--bg-raised);border-top:1px solid var(--line);padding-bloc
         <img src="/images/wellness.jpg" alt="Sala de masajes con iluminación cálida y ambiente relajante">
         <div class="g-caption"><span class="eyebrow">05</span><strong>Espacios de bienestar</strong></div>
       </div>
+    </div>
+  </section>
+
+  <section class="courses wrap" id="cursos">
+    <div class="courses-card">
+      <span class="eyebrow">Formación</span>
+      <h2>Cursos personalizados</h2>
+      <p class="courses-sub">Además de nuestros servicios, ofrecemos cursos personalizados de maquillaje, faciales profesionales, uñas, masajes y más, pensados para quienes quieren aprender la técnica de manera profesional.</p>
+      <a class="btn btn-primary" href="#contacto">Más información</a>
     </div>
   </section>
 
@@ -610,6 +641,8 @@ footer{background:var(--bg-raised);border-top:1px solid var(--line);padding-bloc
 
   /* ---------- chat assistant (local, no server, no login needed) ---------- */
   var TOPICS = [
+    { keys:['curso','cursos','clase','clases','aprender','capacitacion'],
+      text:'Ofrecemos cursos personalizados de maquillaje, faciales profesionales, uñas, masajes y más. Para más información, por favor contacte al salón.' },
     { keys:['precio','costo','cuanto','cuesta','tarifa'],
       text:'Los precios varían según el servicio y lo que necesites. Escríbenos por WhatsApp al 773-241-1224 y con gusto te damos un precio exacto.' },
     { keys:['cita','reservar','agendar','appointment','turno'],
@@ -622,6 +655,8 @@ footer{background:var(--bg-raised);border-top:1px solid var(--line);padding-bloc
       text:'Ofrecemos maquillaje profesional para cualquier ocasión.' },
     { keys:['uña','uñas','manicure','acrilico','gel'],
       text:'En uñas trabajamos acrílico, no-chip y tech gel, con diseños personalizados hechos a tu gusto.' },
+    { keys:['pestaña','pestañas','ceja','cejas','rizado','planchado','lifting','laminado'],
+      text:'Ofrecemos rizado de pestañas y planchado de cejas, para realzar tu mirada de forma natural.' },
     { keys:['masaje','bienestar','relajante','piedras','ventosa','spa'],
       text:'Nuestros masajes (relajante, de piedras calientes y con ventosas) duran de 45 minutos a una hora, en un ambiente relajante con aromaterapia.' },
     { keys:['horario','hora','abren','cierran','atencion'],
@@ -631,7 +666,7 @@ footer{background:var(--bg-raised);border-top:1px solid var(--line);padding-bloc
     { keys:['contacto','telefono','whatsapp','correo','email'],
       text:'Puedes contactarnos al 773-241-1224 (teléfono y WhatsApp), o al correo nailskybeauty2021@gmail.com.' },
     { keys:['servicio','servicios','ofrecen','hacen'],
-      text:'Ofrecemos servicios de cabello (cortes, color, balayage, rayos, colores de fantasía, permanentes), faciales profesionales, maquillaje, uñas personalizadas, y masajes de bienestar. Pregúntame por cualquiera de ellos para más detalle.' }
+      text:'Ofrecemos servicios de cabello (cortes, color, balayage, rayos, colores de fantasía, permanentes), faciales profesionales, maquillaje, uñas personalizadas, rizado de pestañas, planchado de cejas, y masajes de bienestar. Pregúntame por cualquiera de ellos para más detalle.' }
   ];
   var FALLBACK = 'En este momento no es posible procesar su pregunta. Le recomendamos contactarnos directamente por WhatsApp al 773-241-1224, o por correo a nailskybeauty2021@gmail.com.';
 
