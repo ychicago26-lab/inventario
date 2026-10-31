@@ -288,7 +288,8 @@ footer{background:var(--bg-raised);border-top:1px solid var(--line);padding-bloc
 <header>
   <div class="wrap nav">
     <a href="#inicio" class="brand" aria-label="KY Nature Beauty — inicio">
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M12 21c-4-3-7-7-7-11a7 7 0 0 1 14 0c0 4-3 8-7 11Z"/><path d="M12 10c0-3 2-5 5-6"/></svg>
+      <svg class="js-brand-icon" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M12 21c-4-3-7-7-7-11a7 7 0 0 1 14 0c0 4-3 8-7 11Z"/><path d="M12 10c0-3 2-5 5-6"/></svg>
+      <img class="js-brand-logo" alt="" style="display:none;width:26px;height:26px;border-radius:50%;object-fit:cover">
       <span class="js-brand-name">KY Nature Beauty</span>
     </a>
     <nav>
@@ -606,12 +607,18 @@ footer{background:var(--bg-raised);border-top:1px solid var(--line);padding-bloc
      a name out of sync with what the owner set inside the app. Falls back
      to the default above if the request fails for any reason. */
   fetch('/api/' + SALON_SLUG + '/public').then(function(r){ return r.ok ? r.json() : null; }).then(function(pub){
-    if(!pub || !pub.name) return;
-    brandName = pub.name;
-    document.title = brandName;
-    document.querySelectorAll('.js-brand-name').forEach(function(el){ el.textContent = brandName; });
-    var ogTitle = document.querySelector('meta[property="og:title"]');
-    if(ogTitle) ogTitle.setAttribute('content', brandName);
+    if(!pub) return;
+    if(pub.name){
+      brandName = pub.name;
+      document.title = brandName;
+      document.querySelectorAll('.js-brand-name').forEach(function(el){ el.textContent = brandName; });
+      var ogTitle = document.querySelector('meta[property="og:title"]');
+      if(ogTitle) ogTitle.setAttribute('content', brandName);
+    }
+    if(pub.logoUrl){
+      document.querySelectorAll('.js-brand-logo').forEach(function(el){ el.src = pub.logoUrl; el.style.display = ''; });
+      document.querySelectorAll('.js-brand-icon').forEach(function(el){ el.style.display = 'none'; });
+    }
   }).catch(function(){});
 
   var toggle = document.getElementById('menuToggle');

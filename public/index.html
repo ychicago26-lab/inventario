@@ -334,6 +334,7 @@ es:{
   ag_new_title:"Nueva clienta", ag_edit_title:"Editar clienta", ag_appt_new_title:"Nueva cita",
   ag_upcoming:"Próximas", ag_past:"Anteriores",
   set_sub:"Personaliza tu salón", set_identity:"Identidad del salón", set_name:"Nombre del salón",
+  set_logo_upload:"Subir logo", set_logo_remove:"Quitar logo", set_logo_hint:"PNG o JPG, se recorta automáticamente. Máximo 4 MB.", set_logo_too_large:"La imagen es demasiado grande. Use una de menos de 4 MB.",
   set_country:"País", set_currency:"Símbolo de moneda", set_language:"Idioma", set_threshold:"Aviso de stock bajo por defecto",
   set_brands:"Marcas frecuentes", set_brands_hint:"Se sugerirán al agregar productos.", set_brand_ph:"Ej. L'Oréal",
   set_services:"Servicios ofrecidos", set_services_hint:"Se sugerirán al agendar una cita y el asistente los conocerá.", set_service_ph:"Ej. Corte de cabello mujer",
@@ -438,6 +439,7 @@ en:{
   ag_new_title:"New client", ag_edit_title:"Edit client", ag_appt_new_title:"New appointment",
   ag_upcoming:"Upcoming", ag_past:"Past",
   set_sub:"Customize your salon", set_identity:"Salon identity", set_name:"Salon name",
+  set_logo_upload:"Upload logo", set_logo_remove:"Remove logo", set_logo_hint:"PNG or JPG, cropped automatically. Max 4 MB.", set_logo_too_large:"That image is too large. Please use one under 4 MB.",
   set_country:"Country", set_currency:"Currency symbol", set_language:"Language", set_threshold:"Default low-stock alert",
   set_brands:"Frequent brands", set_brands_hint:"Suggested when adding products.", set_brand_ph:"E.g. L'Oréal",
   set_services:"Services offered", set_services_hint:"Suggested when booking an appointment, and known to the assistant.", set_service_ph:"E.g. Women's haircut",
@@ -542,6 +544,7 @@ pt:{
   ag_new_title:"Nova cliente", ag_edit_title:"Editar cliente", ag_appt_new_title:"Novo agendamento",
   ag_upcoming:"Próximos", ag_past:"Anteriores",
   set_sub:"Personalize seu salão", set_identity:"Identidade do salão", set_name:"Nome do salão",
+  set_logo_upload:"Enviar logo", set_logo_remove:"Remover logo", set_logo_hint:"PNG ou JPG, recortado automaticamente. Máximo 4 MB.", set_logo_too_large:"A imagem é muito grande. Use uma com menos de 4 MB.",
   set_country:"País", set_currency:"Símbolo da moeda", set_language:"Idioma", set_threshold:"Alerta de estoque baixo padrão",
   set_brands:"Marcas frequentes", set_brands_hint:"Serão sugeridas ao adicionar produtos.", set_brand_ph:"Ex. L'Oréal",
   set_services:"Serviços oferecidos", set_services_hint:"Serão sugeridos ao agendar e o assistente os conhecerá.", set_service_ph:"Ex. Corte de cabelo feminino",
@@ -646,6 +649,7 @@ fr:{
   ag_new_title:"Nouvelle cliente", ag_edit_title:"Modifier la cliente", ag_appt_new_title:"Nouveau rendez-vous",
   ag_upcoming:"À venir", ag_past:"Passés",
   set_sub:"Personnalisez votre salon", set_identity:"Identité du salon", set_name:"Nom du salon",
+  set_logo_upload:"Téléverser le logo", set_logo_remove:"Supprimer le logo", set_logo_hint:"PNG ou JPG, recadré automatiquement. Maximum 4 Mo.", set_logo_too_large:"Cette image est trop volumineuse. Utilisez-en une de moins de 4 Mo.",
   set_country:"Pays", set_currency:"Symbole monétaire", set_language:"Langue", set_threshold:"Alerte de stock faible par défaut",
   set_brands:"Marques fréquentes", set_brands_hint:"Suggérées lors de l'ajout de produits.", set_brand_ph:"Ex. L'Oréal",
   set_services:"Services proposés", set_services_hint:"Suggérés lors de la prise de rendez-vous, et connus de l'assistant.", set_service_ph:"Ex. Coupe femme",
@@ -750,6 +754,7 @@ it:{
   ag_new_title:"Nuova cliente", ag_edit_title:"Modifica cliente", ag_appt_new_title:"Nuovo appuntamento",
   ag_upcoming:"Prossimi", ag_past:"Passati",
   set_sub:"Personalizza il tuo salone", set_identity:"Identità del salone", set_name:"Nome del salone",
+  set_logo_upload:"Carica logo", set_logo_remove:"Rimuovi logo", set_logo_hint:"PNG o JPG, ritagliato automaticamente. Massimo 4 MB.", set_logo_too_large:"L'immagine è troppo grande. Usane una inferiore a 4 MB.",
   set_country:"Paese", set_currency:"Simbolo valuta", set_language:"Lingua", set_threshold:"Avviso scorte basse predefinito",
   set_brands:"Marche frequenti", set_brands_hint:"Suggerite quando aggiungi prodotti.", set_brand_ph:"Es. L'Oréal",
   set_services:"Servizi offerti", set_services_hint:"Suggeriti quando prenoti un appuntamento, e noti all'assistente.", set_service_ph:"Es. Taglio donna",
@@ -888,7 +893,7 @@ var state = {
   formulaLevel:6, formulaTarget:'ash', formulaSkin:'neutral',
   formulaCameraOpen:false, formulaCameraError:null,
   authRequired:false, authSalonName:'', authHasUsers:true, authLegacyPassword:false, authBusy:false, authError:null,
-  authView:'login', authForgotStep:'name', authForgotName:'', authForgotQuestion:'',
+  authView:'login', authForgotStep:'name', authForgotName:'', authForgotQuestion:'', authLogoUrl:'',
   authCaptchaA:0, authCaptchaB:0,
   currentUserName:'', teamUsers:[], musicPlaying:false, bookingRequests:[]
 };
@@ -1113,6 +1118,11 @@ var ICONS = {
   pause:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none"><rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor"/><rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor"/></svg>'
 };
 
+function brandMark(logoUrl, size){
+  if(logoUrl) return '<img src="'+esc(logoUrl)+'" alt="" style="width:'+size+'px;height:'+size+'px;border-radius:50%;object-fit:cover;flex:none">';
+  return ICONS.leaf;
+}
+
 /* ================= render helpers ================= */
 function statusOf(p){
   var th = (p.threshold==null? (state.config&&state.config.defaultThreshold) : p.threshold) || 5;
@@ -1157,7 +1167,7 @@ function renderApp(){
 
   var html = '';
   html += '<aside class="sidebar">';
-  html += '<div class="brand" style="color:var(--gold-soft)">'+ICONS.leaf+'<div><div class="brand-name">'+esc(state.config.name)+'</div><div class="brand-tag">'+esc(t('tagline'))+'</div></div></div>';
+  html += '<div class="brand" style="color:var(--gold-soft)">'+brandMark(state.config.logoUrl,30)+'<div><div class="brand-name">'+esc(state.config.name)+'</div><div class="brand-tag">'+esc(t('tagline'))+'</div></div></div>';
   html += '<nav class="nav">';
   navItems.forEach(function(it){
     html += '<button class="nav-item'+(state.tab===it[0]?' active':'')+'" data-action="tab" data-tab="'+it[0]+'">'+it[2]+'<span>'+it[1]+'</span></button>';
@@ -1173,7 +1183,7 @@ function renderApp(){
 
   html += '<div class="main">';
   html += '<div class="topbar">';
-  html += '<div class="brand" style="color:var(--gold-soft)">'+ICONS.leaf+'<div class="brand-name" style="font-size:17px">'+esc(state.config.name)+'</div></div>';
+  html += '<div class="brand" style="color:var(--gold-soft)">'+brandMark(state.config.logoUrl,26)+'<div class="brand-name" style="font-size:17px">'+esc(state.config.name)+'</div></div>';
   html += '<div style="display:flex;align-items:center;gap:8px">'+renderLangSelect('top')+'<button class="icon-btn" data-action="toggle-music" aria-label="'+(state.musicPlaying?t('music_pause'):t('music_play'))+'">'+(state.musicPlaying?ICONS.pause:ICONS.note)+'</button><button class="icon-btn" data-action="tab" data-tab="dashboard">'+ICONS.bell+(alerts.length?'<span class="badge-dot">'+alerts.length+'</span>':'')+'</button></div>';
   html += '</div>';
   html += '<div class="content">';
@@ -1279,7 +1289,7 @@ function renderLogin(){
   var migrate = isNew && state.authLegacyPassword;
   var sub = migrate ? t('auth_sub_migrate') : (isNew ? t('auth_sub_first') : t('auth_sub'));
   return '<div class="onboard-wrap"><div class="onboard-card">'+
-    '<div class="onboard-logo">'+ICONS.leaf+'<h1>'+esc(state.authSalonName||'KY Nature Beauty')+'</h1><p>'+sub+'</p></div>'+
+    '<div class="onboard-logo">'+brandMark(state.authLogoUrl,44)+'<h1>'+esc(state.authSalonName||'KY Nature Beauty')+'</h1><p>'+sub+'</p></div>'+
     '<form id="login-form">'+
       '<div class="field"><label>'+t('auth_fullname')+'</label><input required id="auth-fullname" placeholder="'+t('auth_fullname_ph')+'" autofocus></div>'+
       (migrate?'<div class="field"><label>'+t('auth_old_password')+'</label><input required type="password" id="auth-old-password"></div>':'')+
@@ -1298,7 +1308,7 @@ function renderLogin(){
 
 function renderCreateAccount(){
   return '<div class="onboard-wrap"><div class="onboard-card">'+
-    '<div class="onboard-logo">'+ICONS.leaf+'<h1>'+esc(state.authSalonName||'KY Nature Beauty')+'</h1><p>'+t('auth_create_account_title')+'</p></div>'+
+    '<div class="onboard-logo">'+brandMark(state.authLogoUrl,44)+'<h1>'+esc(state.authSalonName||'KY Nature Beauty')+'</h1><p>'+t('auth_create_account_title')+'</p></div>'+
     '<form id="create-account-form">'+
       '<div class="field"><label>'+t('auth_invite_code')+'</label><input required id="ca-invite-code" placeholder="'+t('auth_invite_code_ph')+'" autofocus></div>'+
       '<div class="field"><label>'+t('auth_fullname')+'</label><input required id="ca-fullname" placeholder="'+t('auth_fullname_ph')+'"></div>'+
@@ -1334,7 +1344,7 @@ function renderForgotPassword(){
     '</form>';
   }
   return '<div class="onboard-wrap"><div class="onboard-card">'+
-    '<div class="onboard-logo">'+ICONS.leaf+'<h1>'+esc(state.authSalonName||'KY Nature Beauty')+'</h1><p>'+(step==='answer'?t('forgot_answer_intro'):t('forgot_step1_sub'))+'</p></div>'+
+    '<div class="onboard-logo">'+brandMark(state.authLogoUrl,44)+'<h1>'+esc(state.authSalonName||'KY Nature Beauty')+'</h1><p>'+(step==='answer'?t('forgot_answer_intro'):t('forgot_step1_sub'))+'</p></div>'+
     body+
   '</div></div>';
 }
@@ -1725,6 +1735,30 @@ function handleSkinPhotoUpload(file){
   img.src = url;
 }
 
+function handleLogoUpload(file){
+  if(!file) return;
+  if(file.size > 4*1024*1024){ showToast(t('set_logo_too_large')); return; }
+  var url = URL.createObjectURL(file);
+  var img = new Image();
+  img.onload = function(){
+    var size = 240;
+    var canvas = document.createElement('canvas');
+    canvas.width = size; canvas.height = size;
+    var ctx = canvas.getContext('2d');
+    var iw = img.naturalWidth, ih = img.naturalHeight;
+    var cropSize = Math.min(iw, ih);
+    var sx = (iw - cropSize)/2, sy = (ih - cropSize)/2;
+    ctx.drawImage(img, sx, sy, cropSize, cropSize, 0, 0, size, size);
+    var dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+    URL.revokeObjectURL(url);
+    Data.setConfig(Object.assign({}, state.config, {logoUrl:dataUrl})).then(function(){
+      showToast(t('set_saved'));
+    });
+  };
+  img.onerror = function(){ URL.revokeObjectURL(url); showToast(t('chat_error_generic')); };
+  img.src = url;
+}
+
 function renderSettings(){
   var cfg = state.config;
   var lang = getLang();
@@ -1737,6 +1771,17 @@ function renderSettings(){
   html += '<div class="page-head"><div><h1>'+t('nav_settings')+'</h1><div class="sub">'+t('set_sub')+'</div></div></div>';
   html += '<div class="card" style="max-width:560px">';
   html += '<h3 style="margin-bottom:16px;font-size:19px;color:var(--gold-soft)">'+t('set_identity')+'</h3>';
+  html += '<div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">';
+  html += '<div style="width:56px;height:56px;border-radius:50%;overflow:hidden;background:var(--bg-elev-2);display:flex;align-items:center;justify-content:center;flex:none;color:var(--gold-soft)">'+(cfg.logoUrl?'<img src="'+esc(cfg.logoUrl)+'" style="width:100%;height:100%;object-fit:cover">':ICONS.leaf)+'</div>';
+  html += '<div style="display:flex;flex-direction:column;gap:6px">';
+  html += '<div style="display:flex;gap:8px">';
+  html += '<button type="button" class="btn btn-sm btn-ghost" data-action="pick-logo">'+t('set_logo_upload')+'</button>';
+  if(cfg.logoUrl){ html += '<button type="button" class="btn btn-sm btn-ghost" data-action="remove-logo" style="color:var(--bad)">'+t('set_logo_remove')+'</button>'; }
+  html += '</div>';
+  html += '<span style="font-size:12px;color:var(--text-dim)">'+t('set_logo_hint')+'</span>';
+  html += '</div>';
+  html += '<input type="file" id="logo-file" accept="image/*" style="display:none">';
+  html += '</div>';
   html += '<form id="settings-form">';
   html += '<div class="field"><label>'+t('set_name')+'</label><input id="set-name" value="'+esc(cfg.name)+'" required></div>';
   html += '<div class="row2">';
@@ -2363,6 +2408,10 @@ document.addEventListener('change', function(e){
     handleSkinPhotoUpload(e.target.files && e.target.files[0]);
     e.target.value = '';
   }
+  if(e.target.id==='logo-file'){
+    handleLogoUpload(e.target.files && e.target.files[0]);
+    e.target.value = '';
+  }
 });
 
 document.addEventListener('click', function(e){
@@ -2420,6 +2469,12 @@ document.addEventListener('click', function(e){
   else if(action==='camera-back'){ if(actEl!==e.target) return; closeCameraModal(); }
   else if(action==='capture-skin'){ captureSkinTone(); }
   else if(action==='upload-photo-trigger'){ var fi=document.getElementById('skin-photo-input'); if(fi) fi.click(); }
+  else if(action==='pick-logo'){ var lf=document.getElementById('logo-file'); if(lf) lf.click(); }
+  else if(action==='remove-logo'){
+    if(confirm(t('common_delete_q'))){
+      Data.setConfig(Object.assign({}, state.config, {logoUrl:''})).then(function(){ showToast(t('set_saved')); });
+    }
+  }
   else if(action==='auth-forgot'){ state.authView='forgot'; state.authForgotStep='name'; state.authError=null; render(); }
   else if(action==='auth-show-register'){
     state.authView='register'; state.authError=null;
@@ -2518,6 +2573,7 @@ async function boot(){
   }
 
   state.authSalonName = pub.name;
+  state.authLogoUrl = pub.logoUrl || '';
   state.authHasUsers = !!pub.hasUsers;
   state.authLegacyPassword = !!pub.legacyPassword;
   if(!AUTH_TOKEN){

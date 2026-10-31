@@ -165,6 +165,7 @@ app.get('/api/:slug/public', async (req, res) => {
       exists: true,
       name: cfg.name,
       language: cfg.language,
+      logoUrl: cfg.logoUrl || null,
       hasUsers: users.length > 0,
       legacyPassword: !users.length && !!cfg.passwordHash
     });
