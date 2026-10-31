@@ -2390,9 +2390,13 @@ document.addEventListener('click', function(e){
     var reqId = actEl.getAttribute('data-id');
     var reqDoc = state.bookingRequests.find(function(r){ return r.id===reqId; });
     if(!reqDoc) return;
-    saveAppt(null, {clientName:reqDoc.clientName, date:reqDoc.date, time:reqDoc.time||'', service:reqDoc.service||'', notes:reqDoc.notes||''}).then(function(){
-      var known = state.clients.find(function(c){ return c.name.toLowerCase()===reqDoc.clientName.toLowerCase(); });
-      if(known && reqDoc.phone && !known.phone){ Data.updateDoc('clients', known.id, {phone:reqDoc.phone}); }
+    var existingClient = state.clients.find(function(c){ return c.name.toLowerCase()===reqDoc.clientName.toLowerCase(); });
+    var ensureClient = existingClient
+      ? (reqDoc.phone && !existingClient.phone ? Data.updateDoc('clients', existingClient.id, {phone:reqDoc.phone}) : Promise.resolve())
+      : Data.addDoc('clients', {name:reqDoc.clientName, phone:reqDoc.phone||'', email:'', notes:''});
+    ensureClient.then(function(){
+      return Data.addDoc('appointments', {clientName:reqDoc.clientName, date:reqDoc.date, time:reqDoc.time||'', service:reqDoc.service||'', notes:reqDoc.notes||''});
+    }).then(function(){
       return Data.deleteDoc('booking_requests', reqId);
     }).then(function(){
       showToast(t('ag_request_confirm'));
