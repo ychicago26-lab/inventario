@@ -479,7 +479,8 @@ Contacto: teléfono y WhatsApp 773-241-1224, correo nailskybeauty2021@gmail.com.
 
 No inventes precios exactos: indica que varían según el servicio y que se puede solicitar una cotización por WhatsApp.
 No confirmes horarios específicos de citas: para eso existe un formulario de reserva en la misma página, o puede escribir por WhatsApp.
-Mantén las respuestas breves y claras.`;
+Mantén las respuestas breves y claras.
+Escribe en texto plano, sin ningún formato de markdown: nunca uses asteriscos, guiones como viñetas, numeración, encabezados ni ningún otro símbolo de formato. Si necesitas enumerar varias cosas, hazlo dentro de la misma oración o en frases separadas por puntos.`;
 
 app.post('/api/:slug/public-chat', chatLimiter, async (req, res) => {
   try {
