@@ -30,6 +30,35 @@ con recuperación de contraseña mediante una pregunta de seguridad personal.
 Desde Ajustes → Equipo se pueden agregar o quitar cuentas (no se puede
 eliminar la última cuenta activa de un salón).
 
+### Cada salón tiene su propia portada
+
+Además del panel interno, cada salón tiene su propia página pública en
+`/p/su-slug`. Se configura entera desde **Ajustes → Portada pública**:
+título, texto de bienvenida, descripción, experiencia, cursos, teléfono,
+WhatsApp, correo, ciudad, dirección, Instagram, horario y nota del pie.
+Desde ahí también se decide si se muestran la galería, el formulario de
+reserva y el asistente de chat, y se copia el enlace para compartirlo.
+
+La lista de servicios que aparece en la portada y en el formulario de
+reserva es la misma que el salón ya tiene en **Ajustes → Servicios
+ofrecidos**, así que no hay que escribirla dos veces.
+
+La portada de KY Nature Beauty sigue en `/`, tal como estaba.
+
+### Aislamiento entre salones
+
+Cada salón solo ve lo suyo. Todo se guarda con el identificador del salón,
+cada petición exige una sesión firmada que está atada a ese salón concreto,
+y una sesión de un salón recibe `401` en cualquier ruta de otro. No existe
+ninguna pantalla ni ningún endpoint que liste los salones. Un salón recién
+abierto empieza con el inventario, las clientas, la agenda y los reportes
+completamente vacíos.
+
+El endpoint público de la portada solo devuelve los campos que el propio
+salón decidió publicar, nunca la configuración entera, así que añadir un
+campo privado a la configuración más adelante no puede filtrarlo por
+descuido.
+
 ### Variables de entorno
 
 En la pestaña Environment del servicio, además de `DATABASE_URL` (la crea
@@ -43,7 +72,74 @@ sola el Blueprint), conviene agregar:
 - `SESSION_SECRET` — un valor propio, largo y aleatorio, para firmar las
   sesiones de inicio de sesión. Si no se define, el servidor genera uno al
   arrancar, pero entonces todas las sesiones se cierran cada vez que Render
-  reinicia el proceso (cada redeploy, por ejemplo).
+  reinicia el proceso (cada redeploy, por ejemplo). El Blueprint ya lo
+  genera solo.
+- `SIGNUP_CODE` — el código que hay que escribir para abrir un salón nuevo.
+  Mientras esté definido, la pantalla de bienvenida pide ese código y sin él
+  no se puede crear ningún salón. Si se deja vacío, cualquiera que conozca
+  la dirección puede abrir el suyo. No afecta a los salones ya existentes ni
+  al inicio de sesión del personal, que sigue usando el código de invitación
+  propio de cada salón.
+
+El chat usa **Anthropic** siempre que `ANTHROPIC_API_KEY` esté definida, y
+solo recurre a Gemini cuando no lo está. Si están las dos, manda Anthropic.
+
+### Correos por Gmail
+
+Con estas variables la aplicación envía tres correos. Sin ellas funciona
+exactamente igual, solo que no envía nada.
+
+- `GMAIL_USER` — la dirección de Gmail desde la que salen los correos.
+- `GMAIL_APP_PASSWORD` — una **contraseña de aplicación** de esa cuenta de
+  Google, no la contraseña normal. Se genera en la cuenta de Google, en
+  Seguridad → Verificación en dos pasos → Contraseñas de aplicaciones. Hay
+  que tener la verificación en dos pasos activada para que aparezca.
+- `MAIL_FROM_NAME` — el nombre que verá quien reciba el correo. Opcional.
+
+Los tres correos son:
+
+1. **Bienvenida**, al abrir un salón nuevo, con sus dos enlaces y los
+   primeros pasos. Va al correo que el salón escribe al registrarse.
+2. **Confirmación de cita**, cuando el salón confirma una solicitud. Va a la
+   clienta, si dejó su correo. Al mismo tiempo, el salón recibe un aviso de
+   cada solicitud nueva.
+3. **Recordatorio**, el día antes de la cita.
+
+Gmail permite unos 500 correos al día desde una cuenta normal, de sobra para
+un salón. Si algún día hace falta más, o se quiere enviar desde un dominio
+propio, conviene pasar a un servicio de correo transaccional.
+
+Si un correo falla, no se pierde nada: la reserva, la cita y la cuenta se
+guardan igual, y el fallo solo queda en los registros del servidor.
+
+### Recordatorios diarios
+
+El envío de recordatorios es un endpoint, no un temporizador interno, porque
+en el plan gratuito de Render el servicio se duerme a los 15 minutos y un
+temporizador simplemente no se ejecutaría.
+
+```
+POST /api/cron/reminders
+x-cron-secret: <el valor de CRON_SECRET>
+```
+
+Busca las citas del día siguiente que tengan correo y no hayan sido avisadas
+todavía, envía el recordatorio y las marca. Ejecutarlo dos veces el mismo día
+no envía nada por duplicado, y una cita cuyo correo falló queda sin marcar
+para reintentarla en la siguiente ejecución.
+
+Para dispararlo una vez al día hay dos caminos. Un **Cron Job de Render**,
+que es lo más limpio pero requiere plan de pago. O un servicio gratuito de
+cron externo, como cron-job.org, configurado para hacer ese POST con la
+cabecera. Sin `CRON_SECRET` definida, el endpoint responde `503` y no hace
+nada.
+
+### Añadir una cita al calendario
+
+En la Agenda, cada cita tiene un botón que descarga un archivo `.ics`
+estándar. Se abre en Apple Calendar, Google Calendar y Outlook, y ya trae dos
+avisos puestos: uno el día antes y otro dos horas antes. No hace falta
+ninguna cuenta, ningún permiso ni ningún servicio externo.
 
 ### Desplegar (reemplaza el Static Site anterior)
 

@@ -417,6 +417,7 @@ footer{background:var(--bg-raised);border-top:1px solid var(--line);padding-bloc
         <div class="b-row">
           <div class="b-field"><label>Nombre completo</label><input required id="bf-name" placeholder="Tu nombre"></div>
           <div class="b-field"><label>Teléfono</label><input required id="bf-phone" placeholder="773-000-0000"></div>
+          <div class="b-field"><label>Correo electrónico (opcional)</label><input id="bf-email" type="email" maxlength="160" placeholder="Para enviarte la confirmación y un recordatorio"></div>
         </div>
         <div class="b-field"><label>Servicio</label>
           <select required id="bf-service">
@@ -761,6 +762,7 @@ footer{background:var(--bg-raised);border-top:1px solid var(--line);padding-bloc
     var payload = {
       clientName: document.getElementById('bf-name').value.trim(),
       phone: document.getElementById('bf-phone').value.trim(),
+      email: (document.getElementById('bf-email')||{value:''}).value.trim(),
       service: document.getElementById('bf-service').value,
       date: document.getElementById('bf-date').value,
       time: document.getElementById('bf-time').value,

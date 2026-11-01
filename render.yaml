@@ -20,3 +20,22 @@ services:
         sync: false
       - key: ANTHROPIC_API_KEY
         sync: false
+      # Código que debe escribir quien quiera abrir un salón nuevo.
+      # Déjalo en blanco y cualquiera con la dirección podrá abrir el suyo.
+      - key: SIGNUP_CODE
+        sync: false
+      # Firma las sesiones. Sin él, todos quedan desconectados en cada deploy.
+      - key: SESSION_SECRET
+        generateValue: true
+      # Correo por Gmail. Sin estas dos, la app funciona igual pero sin enviar
+      # correos. La contraseña es una "contraseña de aplicación" de Google,
+      # no la contraseña normal de la cuenta.
+      - key: GMAIL_USER
+        sync: false
+      - key: GMAIL_APP_PASSWORD
+        sync: false
+      - key: MAIL_FROM_NAME
+        sync: false
+      # Protege el trabajo diario de recordatorios.
+      - key: CRON_SECRET
+        generateValue: true
