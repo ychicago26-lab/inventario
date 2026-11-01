@@ -75,6 +75,10 @@ sola el Blueprint), conviene agregar:
   reinicia el proceso (cada redeploy, por ejemplo). El Blueprint ya lo
   genera solo.
 - `SIGNUP_CODE` — el código que hay que escribir para abrir un salón nuevo.
+  Se compara sin distinguir mayúsculas de minúsculas y sin tener en cuenta
+  los espacios ni los guiones, porque los teclados de móvil no siempre ponen
+  mayúsculas y al pegar suele colarse un espacio. El código de invitación de
+  cada salón se compara igual. Ambas comparaciones son de tiempo constante.
   Mientras esté definido, la pantalla de bienvenida pide ese código y sin él
   no se puede crear ningún salón. Si se deja vacío, cualquiera que conozca
   la dirección puede abrir el suyo. No afecta a los salones ya existentes ni

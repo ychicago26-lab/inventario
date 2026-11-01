@@ -237,15 +237,36 @@ app.get('/api/signup-info', (req, res) => {
   res.json({ codeRequired: !!SIGNUP_CODE });
 });
 
+// Forgives how a code was typed, not what it is. Upper-cases it and drops
+// spaces and hyphens, because phone keyboards often don't auto-capitalise
+// this kind of field and a pasted code tends to carry a stray space. The
+// code itself is unchanged; only the comparison is tolerant.
+function normalizeCode(v) {
+  return String(v == null ? '' : v).toUpperCase().replace(/[\s\u00A0-]/g, '');
+}
+
+// Constant time whatever the two lengths are: comparing digests means
+// neither the content nor the length of the real code leaks from how long
+// the answer takes.
+function codesMatch(given, expected) {
+  if (typeof given !== 'string' || typeof expected !== 'string') return false;
+  if (given.length > 200) return false;
+
+  let a = normalizeCode(given);
+  let b = normalizeCode(expected);
+  // A code written only with punctuation would normalise to nothing, and
+  // an empty answer must never be accepted, so compare it exactly instead.
+  if (!b) { a = given.trim(); b = expected.trim(); }
+  if (!a || !b) return false;
+
+  const ha = crypto.createHash('sha256').update(a, 'utf8').digest();
+  const hb = crypto.createHash('sha256').update(b, 'utf8').digest();
+  return crypto.timingSafeEqual(ha, hb);
+}
+
 function signupCodeAccepted(body) {
   if (!SIGNUP_CODE) return true;
-  const given = ((body && body.signupCode) || '').trim();
-  if (!given || given.length > 200) return false;
-  // Constant-time compare so the code can't be guessed character by
-  // character from how long the answer takes.
-  const a = Buffer.from(given);
-  const b = Buffer.from(SIGNUP_CODE);
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
+  return codesMatch((body && body.signupCode) || '', SIGNUP_CODE);
 }
 
 // ---- access: public lookup, per-user accounts, login, recovery ----
@@ -337,7 +358,7 @@ app.post('/api/:slug/register', authLimiter, async (req, res) => {
       }
     } else {
       const cfg = await getConfig(slug);
-      const validInvite = !!(cfg && cfg.inviteCode && inviteCode && inviteCode === cfg.inviteCode);
+      const validInvite = !!(cfg && cfg.inviteCode && codesMatch(inviteCode || '', cfg.inviteCode));
       if (!validInvite) {
         const authData = verifyToken(getBearerToken(req), slug);
         if (!authData) return res.status(401).json({ error: 'unauthorized' });
