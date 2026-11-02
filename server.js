@@ -424,8 +424,19 @@ async function signupAccess(body, slug, salonName) {
       ? { ok: true }
       : { ok: false, reason: 'missing' };
   }
-  // No gate configured at all: anyone with the address may open a salon.
-  if (!adminEnabled) return { ok: true };
+  // No gate configured at all. A brand-new installation has to let the
+  // first salon in somehow, so that one is allowed. After that the door
+  // closes by itself: leaving sign-up open to the whole internet is never
+  // what someone wants, and it would otherwise happen silently if the
+  // shared code were removed before the console password was set.
+  if (!adminEnabled) {
+    const any = await pool.query(
+      `SELECT 1 FROM documents WHERE collection='config' AND id='main' AND salon_id <> $1 LIMIT 1`,
+      [ADMIN_NS]
+    );
+    if (!any.rowCount) return { ok: true };
+    return { ok: false, reason: 'no_gate' };
+  }
   return { ok: false, reason: 'missing' };
 }
 
@@ -1392,7 +1403,22 @@ app.use((err, req, res, next) => {
 // the background and keep retrying — requests made before it's ready just
 // get a clean 500, which the frontend already handles gracefully.
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log('Server listening on port', PORT));
+app.listen(PORT, () => {
+  console.log('Server listening on port', PORT);
+  if (adminEnabled) {
+    console.log('Owner console enabled at /admin. New salons need a one-time invitation.');
+  } else if (SIGNUP_CODE) {
+    console.log('WARNING: sign-up uses the shared SIGNUP_CODE. Anyone it is given to can pass it on.');
+    console.log('         Set ADMIN_PASSWORD to issue one-time invitations instead, then remove SIGNUP_CODE.');
+  } else {
+    console.log('WARNING: no ADMIN_PASSWORD and no SIGNUP_CODE are set.');
+    console.log('         Only the very first salon can be opened; after that sign-up is closed.');
+    console.log('         Set ADMIN_PASSWORD to hand out invitations from /admin.');
+  }
+  if (!process.env.SESSION_SECRET) {
+    console.log('WARNING: SESSION_SECRET is not set, so everyone is signed out on every restart.');
+  }
+});
 
 function connectDbWithRetry() {
   initDb()
