@@ -1,0 +1,80 @@
+name: Recordatorios de citas
+
+# Una vez al día le pide al servidor que envíe los recordatorios de las
+# citas del día siguiente. El servidor decide a quién avisar y no manda
+# nada dos veces, así que ejecutar esto de más es inofensivo.
+on:
+  schedule:
+    # 15:00 UTC = 9:00 de la mañana en Illinois en invierno,
+    # 10:00 en verano. GitHub solo entiende UTC, no cambia con el horario
+    # de verano. Si prefieres otra hora, cambia el número de la izquierda.
+    - cron: '0 15 * * *'
+  # Permite lanzarlo a mano desde la pestaña Actions, para probar.
+  workflow_dispatch:
+
+jobs:
+  enviar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Despertar el servicio
+        # En el plan gratuito de Render el servicio se duerme a los 15
+        # minutos y la primera petición tarda cerca de un minuto. Esto lo
+        # despierta primero, para que la llamada de verdad no expire.
+        run: |
+          set -u
+          echo "Despertando ${APP_URL}"
+          for intento in 1 2 3 4 5 6; do
+            codigo=$(curl -s -o /dev/null -w '%{http_code}' --max-time 90 "${APP_URL}/healthz" || echo 000)
+            echo "  intento ${intento}: HTTP ${codigo}"
+            if [ "${codigo}" = "200" ]; then
+              echo "Servicio despierto."
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "No respondió después de 6 intentos."
+          exit 1
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+
+      - name: Enviar los recordatorios
+        run: |
+          set -u
+          if [ -z "${CRON_SECRET}" ]; then
+            echo "Falta el secreto CRON_SECRET en el repositorio."
+            exit 1
+          fi
+
+          for intento in 1 2 3; do
+            respuesta=$(curl -s -w '\n%{http_code}' --max-time 120 \
+              -X POST "${APP_URL}/api/cron/reminders" \
+              -H "x-cron-secret: ${CRON_SECRET}")
+            codigo=$(printf '%s' "${respuesta}" | tail -n1)
+            cuerpo=$(printf '%s' "${respuesta}" | sed '$d')
+
+            echo "intento ${intento}: HTTP ${codigo}"
+            echo "respuesta: ${cuerpo}"
+
+            case "${codigo}" in
+              200)
+                echo "Recordatorios procesados."
+                exit 0
+                ;;
+              401)
+                echo "El secreto no coincide con el que tiene Render."
+                exit 1
+                ;;
+              503)
+                echo "Falta definir CRON_SECRET en Render."
+                exit 1
+                ;;
+            esac
+            sleep 20
+          done
+
+          echo "No se pudo completar después de 3 intentos."
+          exit 1
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
