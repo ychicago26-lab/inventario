@@ -103,10 +103,18 @@ function getBearerToken(req) {
   return header.startsWith('Bearer ') ? header.slice(7) : null;
 }
 function requireAuth(req, res, next) {
+  if (isReservedSlug(req.params.slug)) return res.status(404).json({ error: 'not_found' });
   const data = verifyToken(getBearerToken(req), req.params.slug);
   if (!data) return res.status(401).json({ error: 'unauthorized' });
   req.userId = data.userId;
-  next();
+  // A session opened before the salon was suspended must stop working too,
+  // so the check happens on every request rather than only at sign-in.
+  isSuspended(req.params.slug)
+    .then((off) => {
+      if (off) return res.status(403).json({ error: 'salon_suspended' });
+      next();
+    })
+    .catch(next);
 }
 
 async function initDb() {
@@ -224,6 +232,135 @@ function salonContactLine(cfg) {
   return bits.length ? bits.join(' · ') : '';
 }
 
+/* ================= owner console: invitations and suspension =================
+   Access to the whole application is handed out one salon at a time. Each
+   invitation is a code that works exactly once: the moment a salon is
+   opened with it, it is consumed, so passing it on afterwards gets nobody
+   in. Suspension is the other half, and it is deliberately stored outside
+   the salon's own config, in a namespace the salon has no route to, so a
+   suspended salon cannot switch itself back on.
+
+   ADMIN_PASSWORD turns the console on. Without it there is no console and
+   no invitations, and the app falls back to the shared SIGNUP_CODE. */
+
+const ADMIN_NS = '__owner__';            // reserved, never a real salon
+const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || '').trim();
+const adminEnabled = !!ADMIN_PASSWORD;
+const ADMIN_TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
+
+// A salon slug may never reach into the reserved namespace. Anything
+// starting with two underscores is refused on every per-salon route, so
+// nobody can "open a salon" on top of the owner's own records.
+const RESERVED_SLUGS = new Set(['admin', 'cron', 'api', 's', 'p', 'nuevo', 'healthz', 'signup-info']);
+function isReservedSlug(slug) {
+  if (typeof slug !== 'string' || !slug) return true;
+  return slug.startsWith('__') || RESERVED_SLUGS.has(slug.toLowerCase());
+}
+
+
+function signAdminToken() {
+  const payload = Buffer.from(JSON.stringify({ owner: true, exp: Date.now() + ADMIN_TOKEN_TTL_MS })).toString('base64url');
+  const sig = crypto.createHmac('sha256', SESSION_SECRET).update(payload).digest('base64url');
+  return payload + '.' + sig;
+}
+function verifyAdminToken(token) {
+  if (!token || token.indexOf('.') === -1) return false;
+  const [payload, sig] = token.split('.');
+  const expected = crypto.createHmac('sha256', SESSION_SECRET).update(payload).digest('base64url');
+  if (sig !== expected) return false;
+  try {
+    const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    return data.owner === true && data.exp > Date.now();
+  } catch (e) {
+    return false;
+  }
+}
+function requireOwner(req, res, next) {
+  if (!adminEnabled) return res.status(503).json({ error: 'console_not_configured' });
+  if (!verifyAdminToken(getBearerToken(req))) return res.status(401).json({ error: 'unauthorized' });
+  next();
+}
+
+// The document id is derived from the code itself, so looking an invitation
+// up is one indexed read instead of a scan of every invitation ever issued.
+function inviteId(code) {
+  return crypto.createHash('sha256').update('invite:' + normalizeCode(code), 'utf8').digest('hex').slice(0, 40);
+}
+// Readable, unambiguous when dictated: no O, I, L, 0 or 1.
+const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+function newInviteCode() {
+  const pick = () => CODE_ALPHABET[crypto.randomInt(CODE_ALPHABET.length)];
+  const group = (n) => Array.from({ length: n }, pick).join('');
+  return group(4) + '-' + group(4) + '-' + group(4);
+}
+
+async function getAdminDoc(collection, id) {
+  const r = await pool.query(
+    'SELECT data FROM documents WHERE salon_id=$1 AND collection=$2 AND id=$3',
+    [ADMIN_NS, collection, id]
+  );
+  return r.rows[0] ? r.rows[0].data : null;
+}
+async function listAdminDocs(collection) {
+  const r = await pool.query(
+    'SELECT id, data FROM documents WHERE salon_id=$1 AND collection=$2 ORDER BY updated_at DESC',
+    [ADMIN_NS, collection]
+  );
+  return r.rows.map((row) => Object.assign({ id: row.id }, row.data));
+}
+
+function inviteState(inv) {
+  if (!inv) return 'missing';
+  if (inv.revokedAt) return 'revoked';
+  if (inv.usedAt) return 'used';
+  if (inv.expiresAt && inv.expiresAt < new Date().toISOString().slice(0, 10)) return 'expired';
+  return 'open';
+}
+
+/* Claims an invitation for one salon, or explains why it cannot.
+   The claim is a single conditional UPDATE, so if two people race with the
+   same code the database lets exactly one of them through. */
+async function claimInvite(code, slug, salonName) {
+  const id = inviteId(code);
+  const inv = await getAdminDoc('invites', id);
+  const state = inviteState(inv);
+  if (state !== 'open') return { ok: false, reason: state };
+
+  const r = await pool.query(
+    `UPDATE documents
+        SET data = data || jsonb_build_object(
+              'usedAt', $3::text, 'usedBySlug', $4::text, 'usedByName', $5::text),
+            updated_at = now()
+      WHERE salon_id = $1 AND collection = 'invites' AND id = $2
+        AND COALESCE(data->>'usedAt', '') = ''
+        AND COALESCE(data->>'revokedAt', '') = ''`,
+    [ADMIN_NS, id, new Date().toISOString(), slug, salonName || '']
+  );
+  if (!r.rowCount) return { ok: false, reason: 'used' };
+  return { ok: true, id };
+}
+// Only used when a salon fails to be created after its invitation was
+// claimed, so a code is never burned for a salon that does not exist.
+async function releaseInvite(id) {
+  await pool.query(
+    `UPDATE documents
+        SET data = data - 'usedAt' - 'usedBySlug' - 'usedByName', updated_at = now()
+      WHERE salon_id = $1 AND collection = 'invites' AND id = $2`,
+    [ADMIN_NS, id]
+  );
+}
+
+// Suspension lives here, not in the salon's config, so the salon has no
+// route that can reach it.
+async function isSuspended(slug) {
+  const rec = await getAdminDoc('salons', slug);
+  return !!(rec && rec.suspended);
+}
+async function recordSalon(slug, patch) {
+  const existing = (await getAdminDoc('salons', slug)) || {};
+  await upsertDoc(ADMIN_NS, 'salons', slug, Object.assign({}, existing, patch));
+}
+
 // ---- opening a new salon ----
 // SIGNUP_CODE turns this from an open sign-up into an invitation-only one:
 // when it is set, creating a brand-new salon requires that exact code.
@@ -264,10 +401,175 @@ function codesMatch(given, expected) {
   return crypto.timingSafeEqual(ha, hb);
 }
 
-function signupCodeAccepted(body) {
-  if (!SIGNUP_CODE) return true;
-  return codesMatch((body && body.signupCode) || '', SIGNUP_CODE);
+/* Decides whether a brand-new salon may be opened.
+   An invitation is tried first and consumed if it matches. The shared
+   SIGNUP_CODE stays as a fallback so nothing breaks while moving over, but
+   once invitations are in use it should be removed from the environment:
+   a shared code can be passed on, which is the whole thing invitations
+   exist to prevent. */
+async function signupAccess(body, slug, salonName) {
+  const given = ((body && body.signupCode) || '').toString();
+
+  if (adminEnabled && given.trim()) {
+    const claim = await claimInvite(given, slug, salonName);
+    if (claim.ok) return { ok: true, inviteId: claim.id };
+    // Not an invitation at all: fall through and let the shared code try.
+    if (claim.reason !== 'missing') {
+      return { ok: false, reason: claim.reason };
+    }
+  }
+
+  if (SIGNUP_CODE) {
+    return codesMatch(given, SIGNUP_CODE)
+      ? { ok: true }
+      : { ok: false, reason: 'missing' };
+  }
+  // No gate configured at all: anyone with the address may open a salon.
+  if (!adminEnabled) return { ok: true };
+  return { ok: false, reason: 'missing' };
 }
+
+/* ================= owner console API =================
+   Everything here is the owner's, not a salon's. It never exposes a
+   salon's inventory, clients or agenda: only who exists, when they were
+   let in and whether they are switched on. */
+
+app.get('/api/admin/status', (req, res) => {
+  res.json({ enabled: adminEnabled });
+});
+
+app.post('/api/admin/login', authLimiter, (req, res) => {
+  if (!adminEnabled) return res.status(503).json({ error: 'console_not_configured' });
+  const given = ((req.body && req.body.password) || '').toString();
+  if (!given || given.length > 300) return res.status(401).json({ error: 'invalid_password' });
+  const a = crypto.createHash('sha256').update(given, 'utf8').digest();
+  const b = crypto.createHash('sha256').update(ADMIN_PASSWORD, 'utf8').digest();
+  if (!crypto.timingSafeEqual(a, b)) return res.status(401).json({ error: 'invalid_password' });
+  res.json({ token: signAdminToken() });
+});
+
+app.get('/api/admin/overview', requireOwner, async (req, res) => {
+  try {
+    const invites = await listAdminDocs('invites');
+    const live = new Set(
+      (await pool.query(`SELECT salon_id FROM documents WHERE collection='config' AND id='main'`))
+        .rows.map((r) => r.salon_id)
+    );
+    // A record left behind by a salon that no longer exists would otherwise
+    // show as a ghost row the owner can neither open nor remove.
+    const salons = (await listAdminDocs('salons')).filter((x) => live.has(x.id));
+
+    // Salons opened before the console existed have no record yet; show
+    // them anyway so nothing is invisible to the owner.
+    const known = new Set(salons.map((x) => x.id));
+    const all = await pool.query(
+      `SELECT salon_id, data->>'name' AS name FROM documents
+        WHERE collection='config' AND id='main' AND salon_id <> $1`,
+      [ADMIN_NS]
+    );
+    const extra = all.rows
+      .filter((r) => !known.has(r.salon_id))
+      .map((r) => ({ id: r.salon_id, name: r.name || '', suspended: false, createdAt: null, legacy: true }));
+
+    const counts = await pool.query(
+      `SELECT salon_id, collection, count(*)::int AS n FROM documents
+        WHERE salon_id <> $1 GROUP BY salon_id, collection`,
+      [ADMIN_NS]
+    );
+    const byId = {};
+    counts.rows.forEach((r) => {
+      byId[r.salon_id] = byId[r.salon_id] || {};
+      byId[r.salon_id][r.collection] = r.n;
+    });
+
+    res.json({
+      invites: invites.map((i) => Object.assign({}, i, { state: inviteState(i) })),
+      salons: salons.concat(extra).map((sal) =>
+        Object.assign({}, sal, { counts: byId[sal.id] || {} })
+      )
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+app.post('/api/admin/invites', requireOwner, async (req, res) => {
+  try {
+    const { label, note, expiresAt } = req.body || {};
+    if (isTooLong(label, 160) || isTooLong(note, 400) || isTooLong(expiresAt, 20)) {
+      return res.status(400).json({ error: 'invalid_request' });
+    }
+    const code = newInviteCode();
+    const id = inviteId(code);
+    await upsertDoc(ADMIN_NS, 'invites', id, {
+      code,
+      label: (label || '').trim(),
+      note: (note || '').trim(),
+      expiresAt: (expiresAt || '').trim(),
+      createdAt: new Date().toISOString(),
+      usedAt: null,
+      usedBySlug: null,
+      usedByName: null,
+      revokedAt: null
+    });
+    res.json({ id, code });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+// Revoking only stops an unused invitation. A salon already opened with it
+// is untouched: closing that one down is what suspension is for.
+app.post('/api/admin/invites/:id/revoke', requireOwner, async (req, res) => {
+  try {
+    const inv = await getAdminDoc('invites', req.params.id);
+    if (!inv) return res.status(404).json({ error: 'not_found' });
+    if (inv.usedAt) return res.status(409).json({ error: 'already_used' });
+    await upsertDoc(ADMIN_NS, 'invites', req.params.id,
+      Object.assign({}, inv, { revokedAt: new Date().toISOString() }));
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+app.delete('/api/admin/invites/:id', requireOwner, async (req, res) => {
+  try {
+    await pool.query(
+      'DELETE FROM documents WHERE salon_id=$1 AND collection=$2 AND id=$3',
+      [ADMIN_NS, 'invites', req.params.id]
+    );
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+app.post('/api/admin/salons/:slug/suspend', requireOwner, async (req, res) => {
+  try {
+    const slug = req.params.slug;
+    if (isReservedSlug(slug)) return res.status(404).json({ error: 'not_found' });
+    const cfg = await getConfig(slug);
+    if (!cfg) return res.status(404).json({ error: 'not_found' });
+
+    const suspended = !!(req.body && req.body.suspended);
+    const note = ((req.body && req.body.note) || '').toString().slice(0, 400);
+    await recordSalon(slug, {
+      name: cfg.name || '',
+      suspended,
+      note,
+      suspendedAt: suspended ? new Date().toISOString() : null
+    });
+    res.json({ ok: true, suspended });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
 
 // ---- access: public lookup, per-user accounts, login, recovery ----
 // Minimal, unauthenticated: just enough for the login screen to know which
@@ -277,6 +579,7 @@ app.get('/api/:slug/public', async (req, res) => {
     const slug = req.params.slug;
     const cfg = await getConfig(slug);
     if (!cfg) return res.json({ exists: false });
+    if (await isSuspended(slug)) return res.json({ exists: true, suspended: true, name: cfg.name });
     const users = await getUsers(slug);
     res.json({
       exists: true,
@@ -305,6 +608,8 @@ app.get('/api/:slug/landing', async (req, res) => {
   try {
     const cfg = await getConfig(req.params.slug);
     if (!cfg) return res.status(404).json({ error: 'not_found' });
+    // A suspended salon's page goes quiet rather than announcing why.
+    if (await isSuspended(req.params.slug)) return res.status(404).json({ error: 'not_found' });
     const src = cfg.landing || {};
     const landing = {};
     LANDING_TEXT_FIELDS.forEach((k) => {
@@ -341,6 +646,7 @@ app.get('/api/:slug/landing', async (req, res) => {
 app.post('/api/:slug/register', authLimiter, async (req, res) => {
   try {
     const slug = req.params.slug;
+    if (await isSuspended(slug)) return res.status(403).json({ error: 'salon_suspended' });
     const { fullName, password, recoveryQuestion, recoveryAnswer, oldPassword, inviteCode } = req.body || {};
     if (!fullName || !fullName.trim() || !password || password.length < 4 || !recoveryQuestion || !recoveryAnswer) {
       return res.status(400).json({ error: 'invalid_request' });
@@ -389,6 +695,7 @@ app.post('/api/:slug/login', authLimiter, async (req, res) => {
     if (!fullName || !password || isTooLong(fullName, 120) || isTooLong(password, 200)) {
       return res.status(401).json({ error: 'invalid_password' });
     }
+    if (await isSuspended(slug)) return res.status(403).json({ error: 'salon_suspended' });
     const users = await getUsers(slug);
     const user = findUserByName(users, fullName);
     if (!user || !verifyPassword(password, user.passwordHash)) {
@@ -502,14 +809,30 @@ app.put('/api/:slug/config', async (req, res) => {
     const body = Object.assign({}, req.body || {});
     delete body.passwordHash; // legacy field; never accepted directly from a client
 
+    if (isReservedSlug(slug)) return res.status(404).json({ error: 'not_found' });
+
     if (!existing) {
       // Creating a brand-new salon. The owner's own account is created
       // right after this, via a separate /register call.
-      if (!signupCodeAccepted(req.body)) {
-        return res.status(403).json({ error: 'invalid_signup_code' });
+      const access = await signupAccess(req.body, slug, body.name);
+      if (!access.ok) {
+        return res.status(403).json({ error: 'invalid_signup_code', reason: access.reason });
       }
       delete body.signupCode; // never stored
-      await upsertDoc(slug, 'config', 'main', body);
+      try {
+        await upsertDoc(slug, 'config', 'main', body);
+      } catch (e) {
+        // The invitation was already claimed above; give it back rather
+        // than burning a code on a salon that does not exist.
+        if (access.inviteId) await releaseInvite(access.inviteId).catch(() => {});
+        throw e;
+      }
+      await recordSalon(slug, {
+        name: body.name || '',
+        createdAt: new Date().toISOString(),
+        suspended: false,
+        inviteId: access.inviteId || null
+      });
       res.json({ ok: true });
 
       if (body.ownerEmail) {
@@ -538,6 +861,7 @@ app.put('/api/:slug/config', async (req, res) => {
     // one of its users.
     const data = verifyToken(getBearerToken(req), slug);
     if (!data) return res.status(401).json({ error: 'unauthorized' });
+    if (await isSuspended(slug)) return res.status(403).json({ error: 'salon_suspended' });
     if (existing.passwordHash) body.passwordHash = existing.passwordHash; // preserve legacy field until migrated
     await upsertDoc(slug, 'config', 'main', body);
     res.json({ ok: true });
@@ -713,6 +1037,7 @@ app.post('/api/:slug/public-chat', chatLimiter, async (req, res) => {
     const slug = req.params.slug;
     const cfg = await getConfig(slug);
     if (!cfg) return res.status(404).json({ error: 'not_found' });
+    if (await isSuspended(slug)) return res.status(404).json({ error: 'not_found' });
 
     const geminiKey = process.env.GEMINI_API_KEY;
     const anthropicKey = process.env.ANTHROPIC_API_KEY;
@@ -759,6 +1084,7 @@ app.post('/api/:slug/booking-requests', authLimiter, async (req, res) => {
     const slug = req.params.slug;
     const cfg = await getConfig(slug);
     if (!cfg) return res.status(404).json({ error: 'not_found' });
+    if (await isSuspended(slug)) return res.status(404).json({ error: 'not_found' });
     const { clientName, phone, service, date, time, notes, email } = req.body || {};
     if (!clientName || !clientName.trim() || !phone || !phone.trim() || !service || !date) {
       return res.status(400).json({ error: 'invalid_request' });
@@ -1021,6 +1347,8 @@ app.get('/nuevo', (req, res) => sendFresh(res, 'index.html'));
 // Every salon's own public page, built from what it filled in under
 // Settings. KY Nature Beauty keeps its hand-built page at "/" below.
 app.get('/p/:slug', (req, res) => sendFresh(res, 'salon.html'));
+// The owner's own console. Nothing links to it from anywhere in the app.
+app.get('/admin', (req, res) => sendFresh(res, 'admin.html'));
 app.get('/', (req, res) => sendFresh(res, 'landing.html'));
 
 function errorPage(code, title, message) {

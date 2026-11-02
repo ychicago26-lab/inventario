@@ -45,6 +45,39 @@ ofrecidos**, así que no hay que escribirla dos veces.
 
 La portada de KY Nature Beauty sigue en `/`, tal como estaba.
 
+### Tu consola: invitaciones y suspensión
+
+Define `ADMIN_PASSWORD` en Render y tendrás una consola propia en `/admin`.
+Nada en la aplicación enlaza a esa dirección. Sin esa variable la consola no
+existe y todo funciona como antes.
+
+Desde ahí se hacen dos cosas.
+
+**Invitaciones de un solo uso.** Creas un código para cada salón, con el
+nombre de a quién se lo das y una nota tuya. En cuanto alguien abre su salón
+con ese código, queda gastado: reenviarlo no sirve de nada. La consola te
+muestra cuáles están sin usar, cuáles se gastaron y qué salón salió de cada
+una. Una invitación sin usar se puede anular, y se le puede poner fecha de
+caducidad.
+
+El consumo es una sola instrucción condicional en la base de datos, así que
+si dos personas usan el mismo código a la vez, entra exactamente una.
+
+**Suspensión.** Apaga un salón sin tocar sus datos. Deja de poder entrar, las
+sesiones ya abiertas dejan de servir, nadie puede crear cuentas nuevas y su
+página pública desaparece. Al reactivarlo vuelve todo tal cual estaba.
+
+El interruptor se guarda fuera de la configuración del salón, en un espacio
+al que el salón no tiene ninguna ruta, de modo que un salón suspendido no
+puede reactivarse a sí mismo. Los nombres `admin`, `cron` y cualquiera que
+empiece por dos guiones bajos están reservados y no se pueden usar como
+salón.
+
+Una vez que uses invitaciones, quita `SIGNUP_CODE` del entorno. Un código
+compartido se puede pasar de mano en mano, que es justo lo que las
+invitaciones existen para evitar. Mientras esté definido sigue funcionando
+como alternativa, para que la transición no rompa nada.
+
 ### Aislamiento entre salones
 
 Cada salón solo ve lo suyo. Todo se guarda con el identificador del salón,

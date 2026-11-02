@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Consola</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root{
+    --bg:#15110d; --bg-2:#1c1713; --card:#221c16; --line:#362d23; --line-2:#4a3d2f;
+    --gold:#c8a35f; --gold-soft:#dcc08a;
+    --text:#ece6da; --text-dim:#bdb3a2; --text-faint:#8b8173;
+    --bad:#d98b7a; --ok:#8fbf8f; --warn:#d8b36a;
+    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:15px;line-height:1.55}
+  .wrap{max-width:1000px;margin:0 auto;padding:24px 18px 70px}
+  h1{font-size:23px;margin:0 0 4px;font-weight:600}
+  h2{font-size:17px;margin:0 0 12px;font-weight:600;color:var(--gold-soft)}
+  .sub{color:var(--text-dim);font-size:13.5px;margin-bottom:26px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:18px}
+  label{display:block;font-size:12.5px;color:var(--text-dim);margin-bottom:5px}
+  input,textarea,select{
+    font-family:var(--sans);font-size:15px;color:var(--text);background:var(--bg-2);
+    border:1px solid var(--line);border-radius:8px;padding:10px 12px;width:100%;
+  }
+  input:focus,textarea:focus{outline:none;border-color:var(--gold)}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .row>.f{flex:1;min-width:150px}
+  .field{margin-bottom:12px}
+  button{
+    font-family:var(--sans);font-size:14px;border-radius:8px;cursor:pointer;
+    padding:10px 18px;border:1px solid var(--line-2);background:transparent;color:var(--text);
+  }
+  button:hover{border-color:var(--gold)}
+  button.primary{background:var(--gold);color:#23190c;border-color:var(--gold);font-weight:500}
+  button.primary:hover{background:var(--gold-soft)}
+  button.danger{color:var(--bad);border-color:rgba(217,139,122,.4)}
+  button.sm{padding:6px 12px;font-size:13px}
+  button[disabled]{opacity:.5;cursor:default}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th{text-align:left;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:var(--text-faint);
+     font-weight:500;padding:0 10px 9px;border-bottom:1px solid var(--line)}
+  td{padding:11px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  tr:last-child td{border-bottom:0}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px;color:var(--gold-soft);letter-spacing:.5px}
+  .pill{display:inline-block;font-size:11.5px;padding:3px 9px;border-radius:999px;border:1px solid var(--line-2);color:var(--text-dim)}
+  .pill.open{color:var(--ok);border-color:rgba(143,191,143,.4)}
+  .pill.used{color:var(--text-faint)}
+  .pill.revoked,.pill.expired{color:var(--bad);border-color:rgba(217,139,122,.35)}
+  .pill.off{color:var(--bad);border-color:rgba(217,139,122,.45)}
+  .pill.on{color:var(--ok);border-color:rgba(143,191,143,.4)}
+  .msg{padding:11px 14px;border-radius:8px;font-size:14px;margin-bottom:14px}
+  .msg.err{background:rgba(217,139,122,.12);color:var(--bad);border:1px solid rgba(217,139,122,.3)}
+  .msg.ok{background:rgba(143,191,143,.1);color:var(--ok);border:1px solid rgba(143,191,143,.28)}
+  .faint{color:var(--text-faint);font-size:12.5px}
+  .empty{color:var(--text-faint);font-size:14px;font-style:italic;padding:14px 10px}
+  .login{max-width:360px;margin:16vh auto 0}
+  .new-code{background:var(--bg-2);border:1px dashed var(--gold);border-radius:10px;padding:16px;text-align:center;margin-bottom:16px}
+  .new-code code{font-size:22px;letter-spacing:2px}
+  [hidden]{display:none !important}
+  @media (max-width:640px){
+    th:nth-child(4),td:nth-child(4){display:none}
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- ---------- login ---------- -->
+  <div id="loginView" class="login" hidden>
+    <div class="card">
+      <h1>Consola</h1>
+      <div class="sub">Acceso solo para la administradora.</div>
+      <div class="msg err" id="loginError" hidden></div>
+      <form id="loginForm">
+        <div class="field">
+          <label for="pw">Contraseña</label>
+          <input id="pw" type="password" autocomplete="current-password" required>
+        </div>
+        <button class="primary" type="submit" style="width:100%">Entrar</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="offView" class="login" hidden>
+    <div class="card">
+      <h1>Consola apagada</h1>
+      <p class="sub" style="margin:10px 0 0">
+        Para usarla, añade la variable <code>ADMIN_PASSWORD</code> en Render con la
+        contraseña que quieras y guarda. El servicio se reinicia solo.
+      </p>
+    </div>
+  </div>
+
+  <!-- ---------- console ---------- -->
+  <div id="mainView" hidden>
+    <div style="display:flex;align-items:flex-start;gap:12px">
+      <div style="flex:1">
+        <h1>Consola</h1>
+        <div class="sub">Quién puede abrir un salón, y quién sigue encendido.</div>
+      </div>
+      <button class="sm" id="logout">Salir</button>
+    </div>
+
+    <div class="msg ok" id="flash" hidden></div>
+
+    <div class="card">
+      <h2>Nueva invitación</h2>
+      <p class="faint" style="margin:-6px 0 14px">
+        Cada código sirve una sola vez. En cuanto alguien abre su salón con él,
+        deja de funcionar, así que reenviarlo no sirve de nada.
+      </p>
+      <div class="new-code" id="newCode" hidden>
+        <div class="faint" style="margin-bottom:8px">Código para <span id="newCodeFor"></span></div>
+        <code id="newCodeValue"></code>
+        <div style="margin-top:12px">
+          <button class="sm" id="copyCode">Copiar</button>
+        </div>
+      </div>
+      <form id="inviteForm">
+        <div class="row">
+          <div class="f field">
+            <label for="iv-label">Para quién</label>
+            <input id="iv-label" placeholder="Ej. Bella Vista, Rosa Méndez" maxlength="160">
+          </div>
+          <div class="f field">
+            <label for="iv-exp">Caduca el (opcional)</label>
+            <input id="iv-exp" type="date">
+          </div>
+        </div>
+        <div class="field">
+          <label for="iv-note">Nota (opcional)</label>
+          <input id="iv-note" placeholder="Ej. acordado 300 al mes" maxlength="400">
+        </div>
+        <button class="primary" type="submit">Crear invitación</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>Invitaciones</h2>
+      <table>
+        <thead><tr>
+          <th>Código</th><th>Para</th><th>Estado</th><th>Nota</th><th></th>
+        </tr></thead>
+        <tbody id="inviteRows"></tbody>
+      </table>
+      <div class="empty" id="noInvites" hidden>Todavía no has creado ninguna invitación.</div>
+    </div>
+
+    <div class="card">
+      <h2>Salones</h2>
+      <p class="faint" style="margin:-6px 0 14px">
+        Suspender apaga el acceso y su página pública. Los datos se quedan
+        intactos y vuelven en cuanto la reactivas.
+      </p>
+      <table>
+        <thead><tr>
+          <th>Salón</th><th>Estado</th><th>Contenido</th><th>Abierto</th><th></th>
+        </tr></thead>
+        <tbody id="salonRows"></tbody>
+      </table>
+      <div class="empty" id="noSalons" hidden>Todavía no hay ningún salón.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var TOKEN_KEY = 'kynb_owner_token';
+  var token = null;
+  try { token = localStorage.getItem(TOKEN_KEY); } catch(e){}
+
+  function $(id){ return document.getElementById(id); }
+  function esc(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  function show(el, on){ if(el) el.hidden = !on; }
+  function saveToken(t){
+    token = t;
+    try { t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY); } catch(e){}
+  }
+  function api(path, opts){
+    opts = opts || {};
+    opts.headers = Object.assign({'content-type':'application/json'}, opts.headers || {});
+    if(token) opts.headers.authorization = 'Bearer ' + token;
+    return fetch('/api/admin' + path, opts);
+  }
+  function flash(text){
+    var f = $('flash');
+    f.textContent = text;
+    show(f, true);
+    clearTimeout(flash._t);
+    flash._t = setTimeout(function(){ show(f, false); }, 4000);
+  }
+  function fmtDate(iso){
+    if(!iso) return '';
+    var d = new Date(iso);
+    if(isNaN(d)) return String(iso).slice(0,10);
+    return d.toLocaleDateString('es', {day:'numeric', month:'short', year:'numeric'});
+  }
+
+  var STATE_LABEL = {
+    open:'Sin usar', used:'Usada', revoked:'Anulada', expired:'Caducada'
+  };
+
+  // ---------- rendering ----------
+  function renderInvites(list){
+    var rows = $('inviteRows');
+    show($('noInvites'), list.length === 0);
+    rows.innerHTML = list.map(function(i){
+      var usedBit = i.usedAt
+        ? '<div class="faint">' + esc(i.usedByName || i.usedBySlug || '') + ' · ' + esc(fmtDate(i.usedAt)) + '</div>'
+        : (i.expiresAt ? '<div class="faint">caduca ' + esc(fmtDate(i.expiresAt)) + '</div>' : '');
+      var actions = '';
+      if(i.state === 'open'){
+        actions += '<button class="sm" data-copy="' + esc(i.code) + '">Copiar</button> ';
+        actions += '<button class="sm danger" data-revoke="' + esc(i.id) + '">Anular</button>';
+      } else {
+        actions += '<button class="sm danger" data-delete="' + esc(i.id) + '">Borrar</button>';
+      }
+      return '<tr>' +
+        '<td><code>' + esc(i.code) + '</code></td>' +
+        '<td>' + esc(i.label || '—') + usedBit + '</td>' +
+        '<td><span class="pill ' + esc(i.state) + '">' + esc(STATE_LABEL[i.state] || i.state) + '</span></td>' +
+        '<td class="faint">' + esc(i.note || '') + '</td>' +
+        '<td style="white-space:nowrap">' + actions + '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  function renderSalons(list){
+    var rows = $('salonRows');
+    show($('noSalons'), list.length === 0);
+    rows.innerHTML = list.map(function(s){
+      var c = s.counts || {};
+      var bits = [];
+      if(c.products) bits.push(c.products + ' productos');
+      if(c.clients) bits.push(c.clients + ' clientas');
+      if(c.appointments) bits.push(c.appointments + ' citas');
+      var pill = s.suspended
+        ? '<span class="pill off">Suspendido</span>'
+        : '<span class="pill on">Activo</span>';
+      var note = s.note ? '<div class="faint">' + esc(s.note) + '</div>' : '';
+      return '<tr>' +
+        '<td>' + esc(s.name || s.id) +
+          '<div class="faint"><a href="/s/' + esc(s.id) + '" target="_blank" rel="noopener" style="color:inherit">/s/' + esc(s.id) + '</a></div>' +
+        '</td>' +
+        '<td>' + pill + note + '</td>' +
+        '<td class="faint">' + esc(bits.join(' · ') || 'vacío') + '</td>' +
+        '<td class="faint">' + esc(s.createdAt ? fmtDate(s.createdAt) : '—') + '</td>' +
+        '<td style="white-space:nowrap">' +
+          '<button class="sm ' + (s.suspended ? '' : 'danger') + '" data-toggle="' + esc(s.id) + '" data-on="' + (s.suspended ? '0' : '1') + '">' +
+            (s.suspended ? 'Reactivar' : 'Suspender') + '</button>' +
+        '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  function load(){
+    return api('/overview').then(function(r){
+      if(r.status === 401){ saveToken(null); showLogin(); return null; }
+      return r.ok ? r.json() : null;
+    }).then(function(d){
+      if(!d) return;
+      renderInvites(d.invites || []);
+      renderSalons(d.salons || []);
+      show($('loginView'), false);
+      show($('mainView'), true);
+    });
+  }
+
+  function showLogin(){
+    show($('mainView'), false);
+    show($('loginView'), true);
+  }
+
+  // ---------- actions ----------
+  $('loginForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    var err = $('loginError');
+    err.hidden = true;
+    fetch('/api/admin/login', {
+      method:'POST', headers:{'content-type':'application/json'},
+      body: JSON.stringify({password: $('pw').value})
+    }).then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; }); })
+      .then(function(res){
+        if(!res.ok){
+          err.textContent = res.j && res.j.error === 'too_many_requests'
+            ? 'Demasiados intentos. Espera unos minutos.'
+            : 'Contraseña incorrecta.';
+          err.hidden = false;
+          return;
+        }
+        saveToken(res.j.token);
+        $('pw').value = '';
+        load();
+      }).catch(function(){
+        err.textContent = 'No se pudo conectar. Intenta de nuevo.';
+        err.hidden = false;
+      });
+  });
+
+  $('logout').addEventListener('click', function(){
+    saveToken(null);
+    showLogin();
+  });
+
+  $('inviteForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    var label = $('iv-label').value.trim();
+    api('/invites', {
+      method:'POST',
+      body: JSON.stringify({label: label, note: $('iv-note').value.trim(), expiresAt: $('iv-exp').value})
+    }).then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(j){
+        if(!j) return;
+        $('newCodeFor').textContent = label || 'el nuevo salón';
+        $('newCodeValue').textContent = j.code;
+        show($('newCode'), true);
+        $('iv-label').value = ''; $('iv-note').value = ''; $('iv-exp').value = '';
+        load();
+      });
+  });
+
+  function copy(text, el){
+    function done(){
+      if(el){ var old = el.textContent; el.textContent = 'Copiado'; setTimeout(function(){ el.textContent = old; }, 1600); }
+    }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done, function(){ prompt('Código', text); });
+    } else {
+      prompt('Código', text);
+    }
+  }
+
+  $('copyCode').addEventListener('click', function(){
+    copy($('newCodeValue').textContent, this);
+  });
+
+  document.addEventListener('click', function(e){
+    var el = e.target.closest('button');
+    if(!el) return;
+
+    if(el.hasAttribute('data-copy')){
+      copy(el.getAttribute('data-copy'), el);
+      return;
+    }
+    if(el.hasAttribute('data-revoke')){
+      if(!confirm('¿Anular esta invitación? Dejará de servir para abrir un salón.')) return;
+      api('/invites/' + encodeURIComponent(el.getAttribute('data-revoke')) + '/revoke', {method:'POST'})
+        .then(function(){ flash('Invitación anulada.'); load(); });
+      return;
+    }
+    if(el.hasAttribute('data-delete')){
+      if(!confirm('¿Borrar este registro de la lista? No afecta al salón que ya se abrió.')) return;
+      api('/invites/' + encodeURIComponent(el.getAttribute('data-delete')), {method:'DELETE'})
+        .then(function(){ flash('Registro borrado.'); load(); });
+      return;
+    }
+    if(el.hasAttribute('data-toggle')){
+      var slug = el.getAttribute('data-toggle');
+      var turningOff = el.getAttribute('data-on') === '1';
+      var note = '';
+      if(turningOff){
+        note = prompt('Motivo de la suspensión, para tu propio registro:', 'No ha pagado');
+        if(note === null) return;
+      } else if(!confirm('¿Reactivar este salón?')) {
+        return;
+      }
+      api('/salons/' + encodeURIComponent(slug) + '/suspend', {
+        method:'POST',
+        body: JSON.stringify({suspended: turningOff, note: note})
+      }).then(function(){
+        flash(turningOff ? 'Salón suspendido.' : 'Salón reactivado.');
+        load();
+      });
+    }
+  });
+
+  // ---------- start ----------
+  fetch('/api/admin/status').then(function(r){ return r.json(); }).then(function(st){
+    if(!st.enabled){ show($('offView'), true); return; }
+    if(token){ load(); } else { showLogin(); }
+  }).catch(function(){ showLogin(); });
+})();
+</script>
+</body>
+</html>

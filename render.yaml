@@ -39,3 +39,7 @@ services:
       # Protege el trabajo diario de recordatorios.
       - key: CRON_SECRET
         generateValue: true
+      # Tu consola en /admin: invitaciones de un solo uso y suspension.
+      # Sin esta variable la consola no existe.
+      - key: ADMIN_PASSWORD
+        sync: false
