@@ -888,26 +888,6 @@ app.delete('/api/:slug/users/:id', requireAuth, async (req, res) => {
   }
 });
 
-// TEMP: one-time emergency reset for an owner locked out with no working
-// recovery answer. Remove this route right after use.
-app.post('/api/:slug/__emergency-reset', authLimiter, async (req, res) => {
-  try {
-    const EMERGENCY_TOKEN = 'e8641ffc5a2673f9e4fb5517824a3a0bfad2216db86a878b';
-    const { fullName, newPassword, token } = req.body || {};
-    if (token !== EMERGENCY_TOKEN) return res.status(404).end();
-    const slug = req.params.slug;
-    const users = await getUsers(slug);
-    const user = findUserByName(users, fullName);
-    if (!user) return res.status(404).json({ error: 'user_not_found' });
-    user.passwordHash = hashPassword(newPassword);
-    await upsertDoc(slug, 'users', user.id, user);
-    res.json({ ok: true, fullName: user.fullName });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: 'server_error' });
-  }
-});
-
 app.post('/api/:slug/change-password', authLimiter, requireAuth, async (req, res) => {
   try {
     const slug = req.params.slug;
