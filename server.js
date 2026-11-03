@@ -599,6 +599,55 @@ app.get('/api/admin/export', requireOwner, async (req, res) => {
   }
 });
 
+/* Sends the same backup as an email attachment.
+   Downloading a file is awkward on a phone and on iOS often just opens the
+   JSON in a tab instead of saving it. Mailing it to yourself always works,
+   and it puts the copy somewhere that is not the phone, which is what a
+   backup is for. */
+app.post('/api/admin/email-backup', requireOwner, async (req, res) => {
+  try {
+    if (!mailEnabled) return res.status(503).json({ error: 'mail_not_configured' });
+    const to = ((req.body && req.body.to) || GMAIL_USER || '').toString().trim();
+    if (!looksLikeEmail(to)) return res.status(400).json({ error: 'invalid_email' });
+
+    const r = await pool.query(
+      'SELECT salon_id, collection, id, data, updated_at FROM documents ORDER BY salon_id, collection, id'
+    );
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+    const contenido = JSON.stringify({
+      format: 'inventario-backup',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      count: r.rows.length,
+      documents: r.rows
+    });
+
+    const salones = new Set(r.rows.map((x) => x.salon_id).filter((x) => x !== ADMIN_NS));
+    await mailer.sendMail({
+      from: '"' + (MAIL_FROM_NAME || 'Inventario').replace(/["\\\r\n]/g, '') + '" <' + GMAIL_USER + '>',
+      to,
+      subject: `Copia de seguridad — ${r.rows.length} registros`,
+      text:
+        `Adjunta va la copia de seguridad completa de la aplicación.\n\n` +
+        `Registros: ${r.rows.length}\n` +
+        `Salones: ${salones.size}\n` +
+        `Fecha: ${new Date().toLocaleString('es')}\n\n` +
+        `Guarda este correo. Para restaurar, entra a la consola, pulsa ` +
+        `"Restaurar desde un archivo" y elige el archivo adjunto.`,
+      attachments: [{
+        filename: `inventario-copia-${stamp}.json`,
+        content: contenido,
+        contentType: 'application/json'
+      }]
+    });
+
+    res.json({ ok: true, to, count: r.rows.length });
+  } catch (e) {
+    console.error('Backup email failed:', e && e.message);
+    res.status(502).json({ error: 'send_failed' });
+  }
+});
+
 // Restoring writes each row back by its own key, so running it twice does
 // nothing the second time and it can be pointed at an empty database or at
 // one that already holds some of the same records.

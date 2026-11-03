@@ -158,7 +158,8 @@
         para mudar la aplicación a otro servicio cuando quieras.
       </p>
       <div class="row">
-        <button class="primary" id="btnExport">Descargar copia</button>
+        <button class="primary" id="btnMail">Enviármela por correo</button>
+        <button id="btnExport">Descargar copia</button>
         <button id="btnImport">Restaurar desde un archivo</button>
         <input type="file" id="importFile" accept="application/json,.json" style="display:none">
       </div>
@@ -488,6 +489,33 @@
     }).then(function(){
       btn.disabled = false; btn.textContent = old;
     });
+  });
+
+  // En el móvil descargar un archivo es incómodo y en iPhone a menudo solo
+  // abre el JSON en una pestaña. Por correo llega siempre, y además deja la
+  // copia fuera del teléfono, que es de lo que se trata.
+  $('btnMail').addEventListener('click', function(){
+    var btn = this;
+    var destino = prompt('¿A qué correo te la mando?', '');
+    if(destino === null) return;
+    btn.disabled = true;
+    var old = btn.textContent;
+    btn.textContent = 'Enviando…';
+    api('/email-backup', {method:'POST', body: JSON.stringify({to: destino.trim()})})
+      .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; }); })
+      .then(function(res){
+        if(res.ok){
+          flash('Copia enviada a ' + res.j.to + ' con ' + res.j.count + ' registros. Revisa tu correo.');
+        } else if(res.j && res.j.error === 'mail_not_configured'){
+          alert('El correo no está configurado en Render.');
+        } else if(res.j && res.j.error === 'invalid_email'){
+          alert('Esa dirección de correo no es válida.');
+        } else {
+          alert('No se pudo enviar. Prueba con el botón de descargar.');
+        }
+      })
+      .catch(function(){ alert('No se pudo enviar.'); })
+      .then(function(){ btn.disabled = false; btn.textContent = old; });
   });
 
   $('btnImport').addEventListener('click', function(){ $('importFile').click(); });
