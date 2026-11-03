@@ -78,6 +78,20 @@ compartido se puede pasar de mano en mano, que es justo lo que las
 invitaciones existen para evitar. Mientras esté definido sigue funcionando
 como alternativa, para que la transición no rompa nada.
 
+### Recuperar el acceso a un salón
+
+Las contraseñas se guardan cifradas y no se pueden leer ni devolver, ni
+siquiera desde la consola. Por eso la recuperación va al revés: el botón
+**Recuperar acceso** pone un código nuevo en ese salón, y quien lo tenga
+puede crear una cuenta nombrada desde la pantalla de acceso del propio
+salón.
+
+Nunca abre una cuenta ajena y nunca se esconde. La cuenta nueva aparece en
+la lista de Equipo de ese salón, así que ellos ven que se dio acceso.
+
+Sirve cuando un salón olvida su contraseña y también la respuesta de
+recuperación, que es el único caso en que se quedaría encerrado fuera.
+
 ### Copia de seguridad
 
 La consola descarga toda la base de datos en un archivo JSON y la vuelve a

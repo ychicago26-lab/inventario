@@ -638,6 +638,32 @@ app.post('/api/admin/import', requireOwner, async (req, res) => {
   }
 });
 
+/* Gives a salon a fresh code so somebody can get back in.
+   Passwords are hashed and cannot be read or handed back, not even by the
+   owner of the installation, so recovery works the other way round: this
+   sets a new invite code on that salon, and whoever has it can create a
+   new named account there from the salon's own sign-in screen.
+
+   It never opens an existing account and never hides itself. The new
+   account shows up in that salon's team list like any other, so the salon
+   can see that someone was let in. Use it when a salon asks for help, or
+   to get back into your own. */
+app.post('/api/admin/salons/:slug/recovery-code', requireOwner, async (req, res) => {
+  try {
+    const slug = req.params.slug;
+    if (isReservedSlug(slug)) return res.status(404).json({ error: 'not_found' });
+    const cfg = await getConfig(slug);
+    if (!cfg) return res.status(404).json({ error: 'not_found' });
+
+    const code = newInviteCode();
+    await upsertDoc(slug, 'config', 'main', Object.assign({}, cfg, { inviteCode: code }));
+    res.json({ ok: true, code, signInUrl: `/s/${slug}` });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
 /* Permanently removes one salon and everything in it. Suspension is the
    reversible option and should be the usual one; this exists for salons
    that were never really used, abandoned sign-ups and leftovers from

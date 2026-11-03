@@ -277,6 +277,7 @@
         '<td style="white-space:nowrap">' +
           '<button class="sm ' + (s.suspended ? '' : 'danger') + '" data-toggle="' + esc(s.id) + '" data-on="' + (s.suspended ? '0' : '1') + '">' +
             (s.suspended ? 'Reactivar' : 'Suspender') + '</button> ' +
+          '<button class="sm" data-recover="' + esc(s.id) + '" title="Dar un código para volver a entrar">Recuperar acceso</button> ' +
           '<button class="sm danger" data-remove="' + esc(s.id) + '" title="Borrar para siempre">Borrar</button>' +
         '</td>' +
       '</tr>';
@@ -382,6 +383,22 @@
       if(!confirm('¿Borrar este registro de la lista? No afecta al salón que ya se abrió.')) return;
       api('/invites/' + encodeURIComponent(el.getAttribute('data-delete')), {method:'DELETE'})
         .then(function(){ flash('Registro borrado.'); load(); });
+      return;
+    }
+    if(el.hasAttribute('data-recover')){
+      var rslug = el.getAttribute('data-recover');
+      if(!confirm('Se generará un código para que alguien pueda crear una cuenta nueva en "' + rslug + '".\n\nÚsalo solo si el salón te lo pidió, o si es el tuyo. La cuenta nueva aparecerá en su lista de Equipo, así que ellos la verán.')) return;
+      api('/salons/' + encodeURIComponent(rslug) + '/recovery-code', {method:'POST', body:'{}'})
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(j){
+          if(!j){ alert('No se pudo generar el código.'); return; }
+          prompt(
+            'Código de acceso para ' + rslug + '\n\n' +
+            'Abre ' + location.origin + j.signInUrl + '\n' +
+            'pulsa "¿Nueva aquí? Crear cuenta" y escribe este código:',
+            j.code
+          );
+        });
       return;
     }
     if(el.hasAttribute('data-remove')){
