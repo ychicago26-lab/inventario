@@ -277,7 +277,8 @@
         '<td style="white-space:nowrap">' +
           '<button class="sm ' + (s.suspended ? '' : 'danger') + '" data-toggle="' + esc(s.id) + '" data-on="' + (s.suspended ? '0' : '1') + '">' +
             (s.suspended ? 'Reactivar' : 'Suspender') + '</button> ' +
-          '<button class="sm" data-recover="' + esc(s.id) + '" title="Dar un código para volver a entrar">Recuperar acceso</button> ' +
+          '<button class="sm" data-enter="' + esc(s.id) + '" title="Crear una cuenta lista para entrar">Darme acceso</button> ' +
+          '<button class="sm" data-recover="' + esc(s.id) + '" title="Dar un código para que entren ellos">Código</button> ' +
           '<button class="sm danger" data-remove="' + esc(s.id) + '" title="Borrar para siempre">Borrar</button>' +
         '</td>' +
       '</tr>';
@@ -383,6 +384,27 @@
       if(!confirm('¿Borrar este registro de la lista? No afecta al salón que ya se abrió.')) return;
       api('/invites/' + encodeURIComponent(el.getAttribute('data-delete')), {method:'DELETE'})
         .then(function(){ flash('Registro borrado.'); load(); });
+      return;
+    }
+    if(el.hasAttribute('data-enter')){
+      var eslug = el.getAttribute('data-enter');
+      var quien = prompt('Nombre para la cuenta nueva en "' + eslug + '":', 'Yolanda Ancona');
+      if(quien === null) return;
+      api('/salons/' + encodeURIComponent(eslug) + '/access-account', {
+        method:'POST', body: JSON.stringify({fullName: quien})
+      }).then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(j){
+          if(!j){ alert('No se pudo crear la cuenta.'); return; }
+          prompt(
+            'Cuenta creada. Apunta estos datos: la contraseña no se vuelve a mostrar.\n\n' +
+            'Entra en:  ' + location.origin + j.signInUrl + '\n\n' +
+            'Nombre:      ' + j.fullName + '\n' +
+            'Contraseña:  ' + j.password + '\n\n' +
+            'Cámbiala desde Ajustes cuando entres.',
+            j.password
+          );
+          load();
+        });
       return;
     }
     if(el.hasAttribute('data-recover')){

@@ -664,6 +664,55 @@ app.post('/api/admin/salons/:slug/recovery-code', requireOwner, async (req, res)
   }
 });
 
+/* Creates a ready-made account in a salon and shows its name and password
+   once. The short way round the same problem the recovery code solves:
+   instead of handing over a code and asking someone to fill in a form,
+   the account already exists and they just sign in.
+
+   The password is generated here and returned once, never stored in the
+   clear: what the database keeps is the same hash as any other account.
+   The account appears in that salon's team list like any other, so access
+   can never be granted invisibly.
+
+   There is no way back into an existing account, by design. Passwords are
+   hashed and this does not change anyone else's. */
+app.post('/api/admin/salons/:slug/access-account', requireOwner, async (req, res) => {
+  try {
+    const slug = req.params.slug;
+    if (isReservedSlug(slug)) return res.status(404).json({ error: 'not_found' });
+    const cfg = await getConfig(slug);
+    if (!cfg) return res.status(404).json({ error: 'not_found' });
+
+    const users = await getUsers(slug);
+    let name = ((req.body && req.body.fullName) || 'Acceso').toString().trim().slice(0, 100) || 'Acceso';
+    if (findUserByName(users, name)) {
+      // Never silently take over a name that already exists.
+      let n = 2;
+      while (findUserByName(users, name + ' ' + n) && n < 100) n++;
+      name = name + ' ' + n;
+    }
+
+    const password = newInviteCode(); // readable, unambiguous when dictated
+    const id = genId();
+    await upsertDoc(slug, 'users', id, {
+      fullName: name,
+      passwordHash: hashPassword(password),
+      recoveryQuestion: '',
+      // Unguessable on purpose: this account has no recovery answer until
+      // its owner sets one. Losing it is not a dead end, because this
+      // button can always make another.
+      recoveryAnswerHash: hashPassword(crypto.randomBytes(32).toString('hex')),
+      createdAt: new Date().toISOString(),
+      createdByOwner: true
+    });
+
+    res.json({ ok: true, fullName: name, password, signInUrl: `/s/${slug}` });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
 /* Permanently removes one salon and everything in it. Suspension is the
    reversible option and should be the usual one; this exists for salons
    that were never really used, abandoned sign-ups and leftovers from
