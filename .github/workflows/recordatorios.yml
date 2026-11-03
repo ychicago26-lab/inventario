@@ -16,40 +16,61 @@ jobs:
   enviar:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      APP_URL: ${{ secrets.APP_URL }}
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
     steps:
       - name: Despertar el servicio
         # En el plan gratuito de Render el servicio se duerme a los 15
         # minutos y la primera petición tarda cerca de un minuto. Esto lo
-        # despierta primero, para que la llamada de verdad no expire.
+        # despierta primero para que la llamada de verdad no expire.
+        #
+        # Nunca hace fallar el trabajo: si no consigue despertarlo, el paso
+        # siguiente lo intenta igual con sus propios reintentos y es ese el
+        # que decide si hubo un problema real.
+        continue-on-error: true
         run: |
           set -u
-          echo "Despertando ${APP_URL}"
+          # Al pegar un secreto en GitHub es fácil que se cuele un salto de
+          # línea o un espacio al final. Sin limpiarlo, la dirección queda
+          # malformada y curl falla al instante con el código 000.
+          URL="$(printf '%s' "${APP_URL}" | tr -d '[:space:]' | sed 's#/*$##')"
+          if [ -z "${URL}" ]; then
+            echo "El secreto APP_URL está vacío."
+            exit 1
+          fi
+
           for intento in 1 2 3 4 5 6; do
-            codigo=$(curl -s -o /dev/null -w '%{http_code}' --max-time 90 "${APP_URL}/healthz" || echo 000)
-            echo "  intento ${intento}: HTTP ${codigo}"
+            codigo=$(curl -s -o /dev/null -w '%{http_code}' --max-time 90 "${URL}/healthz") || codigo="000"
+            echo "intento ${intento}: HTTP ${codigo}"
             if [ "${codigo}" = "200" ]; then
               echo "Servicio despierto."
               exit 0
             fi
             sleep 15
           done
-          echo "No respondió después de 6 intentos."
-          exit 1
-        env:
-          APP_URL: ${{ secrets.APP_URL }}
+          echo "No respondió al despertarlo; se intenta el envío de todos modos."
 
       - name: Enviar los recordatorios
         run: |
           set -u
-          if [ -z "${CRON_SECRET}" ]; then
+          URL="$(printf '%s' "${APP_URL}" | tr -d '[:space:]' | sed 's#/*$##')"
+          SECRET="$(printf '%s' "${CRON_SECRET}" | tr -d '[:space:]')"
+
+          if [ -z "${URL}" ]; then
+            echo "Falta el secreto APP_URL en el repositorio."
+            exit 1
+          fi
+          if [ -z "${SECRET}" ]; then
             echo "Falta el secreto CRON_SECRET en el repositorio."
             exit 1
           fi
 
           for intento in 1 2 3; do
             respuesta=$(curl -s -w '\n%{http_code}' --max-time 120 \
-              -X POST "${APP_URL}/api/cron/reminders" \
-              -H "x-cron-secret: ${CRON_SECRET}")
+              -X POST "${URL}/api/cron/reminders" \
+              -H "x-cron-secret: ${SECRET}") || respuesta="(sin respuesta)
+          000"
             codigo=$(printf '%s' "${respuesta}" | tail -n1)
             cuerpo=$(printf '%s' "${respuesta}" | sed '$d')
 
@@ -62,12 +83,15 @@ jobs:
                 exit 0
                 ;;
               401)
-                echo "El secreto no coincide con el que tiene Render."
+                echo "El secreto CRON_SECRET no coincide con el que tiene Render."
                 exit 1
                 ;;
               503)
                 echo "Falta definir CRON_SECRET en Render."
                 exit 1
+                ;;
+              000)
+                echo "No se pudo conectar. Revisa que APP_URL sea la dirección correcta."
                 ;;
             esac
             sleep 20
@@ -75,6 +99,3 @@ jobs:
 
           echo "No se pudo completar después de 3 intentos."
           exit 1
-        env:
-          APP_URL: ${{ secrets.APP_URL }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
