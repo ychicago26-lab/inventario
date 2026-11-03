@@ -638,6 +638,35 @@ app.post('/api/admin/import', requireOwner, async (req, res) => {
   }
 });
 
+/* Permanently removes one salon and everything in it. Suspension is the
+   reversible option and should be the usual one; this exists for salons
+   that were never really used, abandoned sign-ups and leftovers from
+   testing. The caller has to repeat the salon's own slug back, so a
+   mis-click cannot wipe a working salon. */
+app.delete('/api/admin/salons/:slug', requireOwner, async (req, res) => {
+  try {
+    const slug = req.params.slug;
+    if (isReservedSlug(slug)) return res.status(404).json({ error: 'not_found' });
+    if (((req.body && req.body.confirm) || '') !== slug) {
+      return res.status(400).json({ error: 'confirm_mismatch' });
+    }
+    const cfg = await getConfig(slug);
+    if (!cfg) return res.status(404).json({ error: 'not_found' });
+
+    const r = await pool.query('DELETE FROM documents WHERE salon_id = $1', [slug]);
+    await pool.query(
+      'DELETE FROM documents WHERE salon_id = $1 AND collection = $2 AND id = $3',
+      [ADMIN_NS, 'salons', slug]
+    );
+    // The invitation it came from is left alone on purpose: the record of
+    // who was given access, and when, outlives the salon itself.
+    res.json({ ok: true, removed: r.rowCount });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
 app.post('/api/admin/salons/:slug/suspend', requireOwner, async (req, res) => {
   try {
     const slug = req.params.slug;

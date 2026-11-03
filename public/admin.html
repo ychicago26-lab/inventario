@@ -276,7 +276,8 @@
         '<td class="faint">' + esc(s.createdAt ? fmtDate(s.createdAt) : '—') + '</td>' +
         '<td style="white-space:nowrap">' +
           '<button class="sm ' + (s.suspended ? '' : 'danger') + '" data-toggle="' + esc(s.id) + '" data-on="' + (s.suspended ? '0' : '1') + '">' +
-            (s.suspended ? 'Reactivar' : 'Suspender') + '</button>' +
+            (s.suspended ? 'Reactivar' : 'Suspender') + '</button> ' +
+          '<button class="sm danger" data-remove="' + esc(s.id) + '" title="Borrar para siempre">Borrar</button>' +
         '</td>' +
       '</tr>';
     }).join('');
@@ -381,6 +382,24 @@
       if(!confirm('¿Borrar este registro de la lista? No afecta al salón que ya se abrió.')) return;
       api('/invites/' + encodeURIComponent(el.getAttribute('data-delete')), {method:'DELETE'})
         .then(function(){ flash('Registro borrado.'); load(); });
+      return;
+    }
+    if(el.hasAttribute('data-remove')){
+      var slug = el.getAttribute('data-remove');
+      if(!confirm('Vas a BORRAR el salón "' + slug + '" y todo lo que contiene.\n\nEsto no se puede deshacer. Si solo quieres cortarle el acceso, usa Suspender.')) return;
+      var typed = prompt('Para confirmar, escribe el identificador del salón:\n\n' + slug);
+      if(typed === null) return;
+      if(typed.trim() !== slug){
+        alert('No coincide. No se ha borrado nada.');
+        return;
+      }
+      api('/salons/' + encodeURIComponent(slug), {method:'DELETE', body: JSON.stringify({confirm: slug})})
+        .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; }); })
+        .then(function(res){
+          if(!res.ok){ alert('No se pudo borrar.'); return; }
+          flash('Salón borrado: ' + res.j.removed + ' registros eliminados.');
+          load();
+        });
       return;
     }
     if(el.hasAttribute('data-toggle')){
