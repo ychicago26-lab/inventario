@@ -78,6 +78,20 @@ compartido se puede pasar de mano en mano, que es justo lo que las
 invitaciones existen para evitar. Mientras esté definido sigue funcionando
 como alternativa, para que la transición no rompa nada.
 
+### Copia de seguridad
+
+La consola descarga toda la base de datos en un archivo JSON y la vuelve a
+cargar desde él. Son dos botones en `/admin`.
+
+Sirve para dos cosas. Para no perder nada, que en un plan gratuito de base
+de datos es imprescindible porque no hay copias automáticas. Y para mudarse
+de proveedor sin depender de nadie: se descarga la copia, se apunta
+`DATABASE_URL` a la base nueva, y se restaura allí.
+
+Restaurar escribe cada registro por su propia clave, así que hacerlo dos
+veces no duplica nada y se puede apuntar tanto a una base vacía como a una
+que ya tenga parte de esos datos.
+
 ### Aislamiento entre salones
 
 Cada salón solo ve lo suyo. Todo se guarda con el identificador del salón,

@@ -30,6 +30,9 @@ app.use(helmet({
     }
   }
 }));
+// The owner's restore endpoint receives the whole database as one file,
+// so it gets its own, larger limit. Everything else stays at 2mb.
+app.use('/api/admin/import', express.json({ limit: '64mb' }));
 app.use(express.json({ limit: '2mb' }));
 
 // Generic limiters for the auth surface (login/register/recovery) and the
@@ -554,6 +557,81 @@ app.delete('/api/admin/invites/:id', requireOwner, async (req, res) => {
       [ADMIN_NS, 'invites', req.params.id]
     );
     res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+/* ---------- backup and restore ----------
+   The whole database as one JSON file the owner can keep. It exists so
+   the data is never tied to one hosting provider: export here, point
+   DATABASE_URL somewhere else, import there, and nothing is lost. It is
+   also the only backup a free database plan gives you.
+
+   Owner-only, like everything else in this section. */
+app.get('/api/admin/export', requireOwner, async (req, res) => {
+  try {
+    const r = await pool.query(
+      'SELECT salon_id, collection, id, data, updated_at FROM documents ORDER BY salon_id, collection, id'
+    );
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="inventario-copia-${stamp}.json"`);
+    res.send(JSON.stringify({
+      format: 'inventario-backup',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      count: r.rows.length,
+      documents: r.rows
+    }));
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+// Restoring writes each row back by its own key, so running it twice does
+// nothing the second time and it can be pointed at an empty database or at
+// one that already holds some of the same records.
+app.post('/api/admin/import', requireOwner, async (req, res) => {
+  try {
+    const body = req.body || {};
+    if (body.format !== 'inventario-backup' || !Array.isArray(body.documents)) {
+      return res.status(400).json({ error: 'not_a_backup' });
+    }
+    if (body.documents.length > 100000) {
+      return res.status(413).json({ error: 'too_large' });
+    }
+
+    let written = 0, skipped = 0;
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      for (const row of body.documents) {
+        if (!row || typeof row.salon_id !== 'string' || typeof row.collection !== 'string' ||
+            typeof row.id !== 'string' || row.data === null || typeof row.data !== 'object') {
+          skipped++;
+          continue;
+        }
+        await client.query(
+          `INSERT INTO documents (salon_id, collection, id, data, updated_at)
+           VALUES ($1,$2,$3,$4, COALESCE($5::timestamptz, now()))
+           ON CONFLICT (salon_id, collection, id)
+           DO UPDATE SET data = EXCLUDED.data, updated_at = EXCLUDED.updated_at`,
+          [row.salon_id, row.collection, row.id, row.data, row.updated_at || null]
+        );
+        written++;
+      }
+      await client.query('COMMIT');
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
+
+    res.json({ ok: true, written, skipped });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'server_error' });

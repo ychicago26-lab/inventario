@@ -151,6 +151,25 @@
     </div>
 
     <div class="card">
+      <h2>Copia de seguridad</h2>
+      <p class="faint" style="margin:-6px 0 14px">
+        Descarga todo en un archivo: salones, inventarios, clientas, citas e
+        invitaciones. Guárdalo en tu computadora. Sirve para no perder nada y
+        para mudar la aplicación a otro servicio cuando quieras.
+      </p>
+      <div class="row">
+        <button class="primary" id="btnExport">Descargar copia</button>
+        <button id="btnImport">Restaurar desde un archivo</button>
+        <input type="file" id="importFile" accept="application/json,.json" style="display:none">
+      </div>
+      <div class="msg err" id="restoreMsg" hidden style="margin-top:14px"></div>
+      <p class="faint" style="margin-top:12px">
+        Restaurar no borra nada: vuelve a escribir lo que haya en el archivo,
+        así que hacerlo dos veces es inofensivo.
+      </p>
+    </div>
+
+    <div class="card">
       <h2>Salones</h2>
       <p class="faint" style="margin:-6px 0 14px">
         Suspender apaga el acceso y su página pública. Los datos se quedan
@@ -382,6 +401,75 @@
         load();
       });
     }
+  });
+
+  // ---------- backup ----------
+  // The download goes through fetch rather than a plain link because the
+  // endpoint needs the owner's token in a header, which a link cannot send.
+  $('btnExport').addEventListener('click', function(){
+    var btn = this;
+    btn.disabled = true;
+    var old = btn.textContent;
+    btn.textContent = 'Preparando…';
+    api('/export').then(function(r){
+      if(!r.ok) throw new Error('export_failed');
+      var name = 'inventario-copia.json';
+      var cd = r.headers.get('content-disposition') || '';
+      var m = cd.match(/filename="([^"]+)"/);
+      if(m) name = m[1];
+      return r.blob().then(function(b){ return {blob:b, name:name}; });
+    }).then(function(f){
+      var url = URL.createObjectURL(f.blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = f.name;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+      flash('Copia descargada. Guárdala en un lugar seguro.');
+    }).catch(function(){
+      alert('No se pudo descargar la copia. Intenta de nuevo.');
+    }).then(function(){
+      btn.disabled = false; btn.textContent = old;
+    });
+  });
+
+  $('btnImport').addEventListener('click', function(){ $('importFile').click(); });
+
+  $('importFile').addEventListener('change', function(){
+    var file = this.files && this.files[0];
+    this.value = '';
+    if(!file) return;
+    if(!confirm('¿Restaurar desde "' + file.name + '"?\n\nSe volverá a escribir todo lo que contenga el archivo. Lo que ya esté igual no cambia.')) return;
+
+    var msg = $('restoreMsg');
+    msg.hidden = true;
+    var reader = new FileReader();
+    reader.onload = function(){
+      var parsed;
+      try { parsed = JSON.parse(reader.result); }
+      catch(e){
+        msg.textContent = 'Ese archivo no es una copia válida.';
+        show(msg, true);
+        return;
+      }
+      api('/import', {method:'POST', body: JSON.stringify(parsed)})
+        .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; }); })
+        .then(function(res){
+          if(!res.ok){
+            msg.textContent = res.j && res.j.error === 'not_a_backup'
+              ? 'Ese archivo no es una copia de esta aplicación.'
+              : 'No se pudo restaurar. Intenta de nuevo.';
+            show(msg, true);
+            return;
+          }
+          flash('Restaurado: ' + res.j.written + ' registros.');
+          load();
+        })
+        .catch(function(){
+          msg.textContent = 'No se pudo restaurar. Intenta de nuevo.';
+          show(msg, true);
+        });
+    };
+    reader.readAsText(file);
   });
 
   // ---------- start ----------
