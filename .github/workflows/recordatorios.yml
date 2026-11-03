@@ -17,6 +17,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
+      # La dirección va aquí, a la vista, porque es la web pública: no hay
+      # nada que ocultar y guardarla como secreto solo conseguía que los
+      # registros la taparan justo cuando hacía falta leerla para saber por
+      # qué fallaba. El secreto APP_URL, si existe, sigue teniendo
+      # prioridad, por si algún día cambia el dominio.
+      APP_URL_POR_DEFECTO: https://kynaturebeauty.com
       APP_URL: ${{ secrets.APP_URL }}
       CRON_SECRET: ${{ secrets.CRON_SECRET }}
     steps:
@@ -34,14 +40,20 @@ jobs:
           # Al pegar un secreto en GitHub es fácil que se cuele un salto de
           # línea o un espacio al final. Sin limpiarlo, la dirección queda
           # malformada y curl falla al instante con el código 000.
-          URL="$(printf '%s' "${APP_URL}" | tr -d '[:space:]' | sed 's#/*$##')"
-          if [ -z "${URL}" ]; then
-            echo "El secreto APP_URL está vacío."
-            exit 1
-          fi
+          URL="$(printf '%s' "${APP_URL:-}" | tr -d '[:space:]' | sed 's#/*$##')"
+          # Un secreto que no empiece por http no es una dirección, por muy
+          # bien escrito que parezca en la caja donde se pegó. En ese caso
+          # se usa la de aquí arriba en vez de fallar sin explicación.
+          case "${URL}" in
+            http://*|https://*) ;;
+            *) URL="${APP_URL_POR_DEFECTO}" ;;
+          esac
+          echo "Despertando ${URL}"
 
           for intento in 1 2 3 4 5 6; do
-            codigo=$(curl -s -o /dev/null -w '%{http_code}' --max-time 90 "${URL}/healthz") || codigo="000"
+            # -S muestra el motivo real cuando curl falla, en vez de dejar
+            # solo un 000 que no dice nada.
+            codigo=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 90 "${URL}/healthz") || codigo="000"
             echo "intento ${intento}: HTTP ${codigo}"
             if [ "${codigo}" = "200" ]; then
               echo "Servicio despierto."
@@ -54,20 +66,24 @@ jobs:
       - name: Enviar los recordatorios
         run: |
           set -u
-          URL="$(printf '%s' "${APP_URL}" | tr -d '[:space:]' | sed 's#/*$##')"
-          SECRET="$(printf '%s' "${CRON_SECRET}" | tr -d '[:space:]')"
+          URL="$(printf '%s' "${APP_URL:-}" | tr -d '[:space:]' | sed 's#/*$##')"
+          # Un secreto que no empiece por http no es una dirección, por muy
+          # bien escrito que parezca en la caja donde se pegó. En ese caso
+          # se usa la de aquí arriba en vez de fallar sin explicación.
+          case "${URL}" in
+            http://*|https://*) ;;
+            *) URL="${APP_URL_POR_DEFECTO}" ;;
+          esac
+          SECRET="$(printf '%s' "${CRON_SECRET:-}" | tr -d '[:space:]')"
+          echo "Llamando a ${URL}"
 
-          if [ -z "${URL}" ]; then
-            echo "Falta el secreto APP_URL en el repositorio."
-            exit 1
-          fi
           if [ -z "${SECRET}" ]; then
             echo "Falta el secreto CRON_SECRET en el repositorio."
             exit 1
           fi
 
           for intento in 1 2 3; do
-            respuesta=$(curl -s -w '\n%{http_code}' --max-time 120 \
+            respuesta=$(curl -sS -w '\n%{http_code}' --max-time 120 \
               -X POST "${URL}/api/cron/reminders" \
               -H "x-cron-secret: ${SECRET}") || respuesta="(sin respuesta)
           000"
