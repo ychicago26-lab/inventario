@@ -67,6 +67,14 @@ const pool = new Pool({
 const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
 const TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
+// Phone keyboards add a space when you paste, and a space at the end of a
+// password is invisible: the form looks right and the answer is just
+// "wrong password". Trimming on the way in and on the way out means the
+// two always agree, and nobody is locked out by something they cannot see.
+function cleanPassword(v) {
+  return typeof v === 'string' ? v.trim() : v;
+}
+
 function hashPassword(password) {
   const salt = crypto.randomBytes(16).toString('hex');
   const hash = crypto.scryptSync(password, salt, 64).toString('hex');
@@ -454,7 +462,7 @@ app.get('/api/admin/status', (req, res) => {
 
 app.post('/api/admin/login', authLimiter, (req, res) => {
   if (!adminEnabled) return res.status(503).json({ error: 'console_not_configured' });
-  const given = ((req.body && req.body.password) || '').toString();
+  const given = cleanPassword(((req.body && req.body.password) || '').toString());
   if (!given || given.length > 300) return res.status(401).json({ error: 'invalid_password' });
   const a = crypto.createHash('sha256').update(given, 'utf8').digest();
   const b = crypto.createHash('sha256').update(ADMIN_PASSWORD, 'utf8').digest();
@@ -840,7 +848,9 @@ app.post('/api/:slug/register', authLimiter, async (req, res) => {
   try {
     const slug = req.params.slug;
     if (await isSuspended(slug)) return res.status(403).json({ error: 'salon_suspended' });
-    const { fullName, password, recoveryQuestion, recoveryAnswer, oldPassword, inviteCode } = req.body || {};
+    let { fullName, password, recoveryQuestion, recoveryAnswer, oldPassword, inviteCode } = req.body || {};
+    password = cleanPassword(password);
+    oldPassword = cleanPassword(oldPassword);
     if (!fullName || !fullName.trim() || !password || password.length < 4 || !recoveryQuestion || !recoveryAnswer) {
       return res.status(400).json({ error: 'invalid_request' });
     }
@@ -884,7 +894,8 @@ app.post('/api/:slug/register', authLimiter, async (req, res) => {
 app.post('/api/:slug/login', authLimiter, async (req, res) => {
   try {
     const slug = req.params.slug;
-    const { fullName, password } = req.body || {};
+    let { fullName, password } = req.body || {};
+    password = cleanPassword(password);
     if (!fullName || !password || isTooLong(fullName, 120) || isTooLong(password, 200)) {
       return res.status(401).json({ error: 'invalid_password' });
     }
@@ -919,7 +930,8 @@ app.post('/api/:slug/forgot-password/start', authLimiter, async (req, res) => {
 app.post('/api/:slug/forgot-password/reset', authLimiter, async (req, res) => {
   try {
     const slug = req.params.slug;
-    const { fullName, answer, newPassword } = req.body || {};
+    let { fullName, answer, newPassword } = req.body || {};
+    newPassword = cleanPassword(newPassword);
     if (!newPassword || newPassword.length < 4) return res.status(400).json({ error: 'invalid_request' });
     if (isTooLong(fullName, 120) || isTooLong(answer, 300) || isTooLong(newPassword, 200)) {
       return res.status(400).json({ error: 'invalid_request' });
@@ -968,7 +980,9 @@ app.post('/api/:slug/change-password', authLimiter, requireAuth, async (req, res
     const slug = req.params.slug;
     const users = await getUsers(slug);
     const user = users.find((u) => u.id === req.userId);
-    const { currentPassword, newPassword } = req.body || {};
+    let { currentPassword, newPassword } = req.body || {};
+    currentPassword = cleanPassword(currentPassword);
+    newPassword = cleanPassword(newPassword);
     if (!user || !verifyPassword(currentPassword, user.passwordHash)) {
       return res.status(401).json({ error: 'invalid_password' });
     }
