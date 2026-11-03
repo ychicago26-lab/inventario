@@ -402,7 +402,7 @@ es:{
   form_found_depth_very_light:"muy claro", form_found_depth_light:"claro", form_found_depth_medium:"medio", form_found_depth_tan:"moreno", form_found_depth_deep:"oscuro",
   form_found_undertone_warm:"cálido (dorado)", form_found_undertone_cool:"frío (rosado)", form_found_undertone_neutral:"neutro",
   form_found_labels_warm:"W, Warm, Golden, Dorado, Beige dorado", form_found_labels_cool:"C, Cool, Rosé, Rosado, Beige rosado", form_found_labels_neutral:"N, Neutral, Natural, Beige neutro",
-  form_brand:"Marca de tinte", form_brand_any:"Sistema internacional de tonos",
+  form_brand:"Marca de tinte", form_brand_mine:"Las marcas de tu salón", form_brand_common:"Marcas frecuentes en tu país", form_brand_any:"Sistema internacional de tonos",
   form_brand_note:"Los códigos se muestran en la nomenclatura de la marca elegida. Confirme el tono exacto en la carta de color de la marca.",
   set_brand_suggest:"Marcas frecuentes en su país", set_brand_suggest_hint:"Toque una para agregarla. Puede quitarla o escribir otra cuando quiera."
 },
@@ -537,7 +537,7 @@ en:{
   form_found_depth_very_light:"very light", form_found_depth_light:"light", form_found_depth_medium:"medium", form_found_depth_tan:"tan", form_found_depth_deep:"deep",
   form_found_undertone_warm:"warm (golden)", form_found_undertone_cool:"cool (pink)", form_found_undertone_neutral:"neutral",
   form_found_labels_warm:"W, Warm, Golden, Honey", form_found_labels_cool:"C, Cool, Rosé, Pink", form_found_labels_neutral:"N, Neutral, Natural, Beige",
-  form_brand:"Colour brand", form_brand_any:"International tone system",
+  form_brand:"Colour brand", form_brand_mine:"Your salon's brands", form_brand_common:"Brands common in your country", form_brand_any:"International tone system",
   form_brand_note:"Codes are shown in the chosen brand's own notation. Confirm the exact shade on that brand's colour chart.",
   set_brand_suggest:"Brands common in your country", set_brand_suggest_hint:"Tap one to add it. You can remove it or type another at any time."
 },
@@ -672,7 +672,7 @@ pt:{
   form_found_depth_very_light:"muito claro", form_found_depth_light:"claro", form_found_depth_medium:"médio", form_found_depth_tan:"moreno", form_found_depth_deep:"escuro",
   form_found_undertone_warm:"quente (dourado)", form_found_undertone_cool:"frio (rosado)", form_found_undertone_neutral:"neutro",
   form_found_labels_warm:"W, Warm, Golden, Dourado", form_found_labels_cool:"C, Cool, Rosé, Rosado", form_found_labels_neutral:"N, Neutral, Natural, Bege",
-  form_brand:"Marca de tinta", form_brand_any:"Sistema internacional de tons",
+  form_brand:"Marca de tinta", form_brand_mine:"As marcas do seu salão", form_brand_common:"Marcas frequentes no seu país", form_brand_any:"Sistema internacional de tons",
   form_brand_note:"Os códigos aparecem na nomenclatura da marca escolhida. Confirme o tom exato na carta de cores da marca.",
   set_brand_suggest:"Marcas frequentes no seu país", set_brand_suggest_hint:"Toque numa para adicionar. Pode remover ou escrever outra quando quiser."
 },
@@ -807,7 +807,7 @@ fr:{
   form_found_depth_very_light:"très clair", form_found_depth_light:"clair", form_found_depth_medium:"moyen", form_found_depth_tan:"hâlé", form_found_depth_deep:"foncé",
   form_found_undertone_warm:"chaud (doré)", form_found_undertone_cool:"froid (rosé)", form_found_undertone_neutral:"neutre",
   form_found_labels_warm:"W, Warm, Doré, Miel", form_found_labels_cool:"C, Cool, Rosé, Rose", form_found_labels_neutral:"N, Neutral, Naturel, Beige",
-  form_brand:"Marque de coloration", form_brand_any:"Système international de tons",
+  form_brand:"Marque de coloration", form_brand_mine:"Les marques de votre salon", form_brand_common:"Marques courantes dans votre pays", form_brand_any:"Système international de tons",
   form_brand_note:"Les codes sont affichés dans la nomenclature de la marque choisie. Confirmez la nuance exacte sur son nuancier.",
   set_brand_suggest:"Marques courantes dans votre pays", set_brand_suggest_hint:"Touchez-en une pour l'ajouter. Vous pouvez la retirer ou en saisir une autre à tout moment."
 },
@@ -942,7 +942,7 @@ it:{
   form_found_depth_very_light:"molto chiaro", form_found_depth_light:"chiaro", form_found_depth_medium:"medio", form_found_depth_tan:"ambrato", form_found_depth_deep:"scuro",
   form_found_undertone_warm:"caldo (dorato)", form_found_undertone_cool:"freddo (rosato)", form_found_undertone_neutral:"neutro",
   form_found_labels_warm:"W, Warm, Golden, Dorato", form_found_labels_cool:"C, Cool, Rosé, Rosato", form_found_labels_neutral:"N, Neutral, Naturale, Beige",
-  form_brand:"Marca di colore", form_brand_any:"Sistema internazionale di toni",
+  form_brand:"Marca di colore", form_brand_mine:"Le marche del suo salone", form_brand_common:"Marche diffuse nel suo paese", form_brand_any:"Sistema internazionale di toni",
   form_brand_note:"I codici sono mostrati nella nomenclatura della marca scelta. Confermi la tonalità esatta sulla cartella colori della marca.",
   set_brand_suggest:"Marche diffuse nel suo paese", set_brand_suggest_hint:"Tocchi una marca per aggiungerla. Può rimuoverla o scriverne un'altra quando vuole."
 }
@@ -1941,7 +1941,12 @@ function renderFormulas(){
   var rk = state.formulaTarget || 'ash';
   var sk = state.formulaSkin || 'neutral';
   var brandList = salonBrands();
-  var brand = state.formulaBrand && brandList.indexOf(state.formulaBrand)!==-1 ? state.formulaBrand : '';
+  var paisBrands = brandsForCountry((state.config && state.config.country) || 'OTHER');
+  // A brand picked from the country suggestions is just as valid as one the
+  // salon typed itself; checking only the salon's own list silently threw
+  // the choice away and fell back to the generic notation.
+  var permitidas = brandList.concat(paisBrands);
+  var brand = state.formulaBrand && permitidas.indexOf(state.formulaBrand)!==-1 ? state.formulaBrand : '';
   var notation = brandNotation(brand);
   var f = computeFormula(li, rk, notation);
   var codeNameMap = {};
@@ -1972,9 +1977,21 @@ function renderFormulas(){
   html += '</div>';
   html += '<div class="field"><label>'+t('form_target')+'</label><select data-action="formula-target">'+targetOpts+'</select></div>';
 
-  var brandOpts = '<option value="">'+esc(t('form_brand_any'))+'</option>' + brandList.map(function(b){
+  // The salon's own brands first, then the ones a salon in this country is
+  // likely to use. Without that second group a salon that never filled in
+  // its brand list had nothing to choose from at all, which is exactly when
+  // the help is most useful.
+  function opcion(b){
     return '<option value="'+esc(b)+'"'+(brand===b?' selected':'')+'>'+esc(b)+'</option>';
-  }).join('');
+  }
+  var sugeridas = paisBrands.filter(function(b){ return brandList.indexOf(b)===-1; });
+  var brandOpts = '<option value="">'+esc(t('form_brand_any'))+'</option>';
+  if(brandList.length){
+    brandOpts += '<optgroup label="'+esc(t('form_brand_mine'))+'">' + brandList.map(opcion).join('') + '</optgroup>';
+  }
+  if(sugeridas.length){
+    brandOpts += '<optgroup label="'+esc(t('form_brand_common'))+'">' + sugeridas.map(opcion).join('') + '</optgroup>';
+  }
   html += '<div class="field"><label>'+t('form_brand')+'</label><select data-action="formula-brand">'+brandOpts+'</select></div>';
 
   html += '<div class="eyebrow" style="margin-bottom:8px">'+t('form_recommended')+'</div>';
