@@ -394,7 +394,7 @@ es:{
   set_page_city:"Ciudad", set_page_address:"Dirección", set_page_instagram:"Instagram",
   set_page_hours:"Horario", set_page_hours_hint:"Una línea por renglón. Ej. Lunes a viernes 9:00 am – 7:00 pm",
   set_page_footernote:"Nota del pie", set_page_gallery:"Mostrar galería", set_page_booking:"Mostrar formulario de reserva", set_page_chat:"Mostrar asistente de chat",
-  form_found_title:"Base de maquillaje sugerida",
+  form_photo_result:"Lo que dice la foto", form_color_rec:"Recomendación de color", form_color_rec_sub:"Tonos que favorecen este subtono de piel, con su fórmula.", form_rec_use:"Usar", form_rec_chosen:"Elegido", form_photo_clear:"Quitar foto", form_found_title:"Base de maquillaje sugerida",
   form_skin_confirm:"Medido sobre la foto: el color de la luz puede alterarlo. Confirme el subtono a simple vista y ajústelo arriba si no coincide.",
   form_found_line:"Base de tono {depth} con subtono {tone}.",
   form_found_labels:"En la etiqueta busque: {labels}.",
@@ -529,7 +529,7 @@ en:{
   set_page_city:"City", set_page_address:"Address", set_page_instagram:"Instagram",
   set_page_hours:"Opening hours", set_page_hours_hint:"One line each. E.g. Monday to Friday 9:00 am – 7:00 pm",
   set_page_footernote:"Footer note", set_page_gallery:"Show gallery", set_page_booking:"Show booking form", set_page_chat:"Show chat assistant",
-  form_found_title:"Suggested foundation",
+  form_photo_result:"What the photo says", form_color_rec:"Colour recommendation", form_color_rec_sub:"Tones that suit this skin undertone, each with its formula.", form_rec_use:"Use", form_rec_chosen:"Chosen", form_photo_clear:"Remove photo", form_found_title:"Suggested foundation",
   form_skin_confirm:"Measured from the photo: the colour of the light can shift it. Check the undertone by eye and adjust it above if it doesn't match.",
   form_found_line:"A {depth} foundation with a {tone} undertone.",
   form_found_labels:"On the label look for: {labels}.",
@@ -664,7 +664,7 @@ pt:{
   set_page_city:"Cidade", set_page_address:"Morada", set_page_instagram:"Instagram",
   set_page_hours:"Horário", set_page_hours_hint:"Uma linha por item. Ex. Segunda a sexta 9:00 – 19:00",
   set_page_footernote:"Nota do rodapé", set_page_gallery:"Mostrar galeria", set_page_booking:"Mostrar formulário de reserva", set_page_chat:"Mostrar assistente de chat",
-  form_found_title:"Base de maquiagem sugerida",
+  form_photo_result:"O que diz a foto", form_color_rec:"Recomendação de cor", form_color_rec_sub:"Tons que favorecem este subtom de pele, com a sua fórmula.", form_rec_use:"Usar", form_rec_chosen:"Escolhido", form_photo_clear:"Remover foto", form_found_title:"Base de maquiagem sugerida",
   form_skin_confirm:"Medido sobre a foto: a cor da luz pode alterá-lo. Confirme o subtom a olho e ajuste acima se não corresponder.",
   form_found_line:"Base de tom {depth} com subtom {tone}.",
   form_found_labels:"No rótulo procure: {labels}.",
@@ -799,7 +799,7 @@ fr:{
   set_page_city:"Ville", set_page_address:"Adresse", set_page_instagram:"Instagram",
   set_page_hours:"Horaires", set_page_hours_hint:"Une ligne par horaire. Ex. Lundi au vendredi 9h00 – 19h00",
   set_page_footernote:"Note de pied de page", set_page_gallery:"Afficher la galerie", set_page_booking:"Afficher le formulaire de réservation", set_page_chat:"Afficher l\'assistant",
-  form_found_title:"Fond de teint suggéré",
+  form_photo_result:"Ce que dit la photo", form_color_rec:"Recommandation de couleur", form_color_rec_sub:"Tons qui conviennent à ce sous-ton de peau, avec leur formule.", form_rec_use:"Utiliser", form_rec_chosen:"Choisi", form_photo_clear:"Retirer la photo", form_found_title:"Fond de teint suggéré",
   form_skin_confirm:"Mesuré sur la photo : la couleur de la lumière peut le fausser. Vérifiez le sous-ton à l'œil et ajustez-le ci-dessus si besoin.",
   form_found_line:"Un fond de teint {depth} au sous-ton {tone}.",
   form_found_labels:"Sur l'étiquette, cherchez : {labels}.",
@@ -934,7 +934,7 @@ it:{
   set_page_city:"Città", set_page_address:"Indirizzo", set_page_instagram:"Instagram",
   set_page_hours:"Orario", set_page_hours_hint:"Una riga per voce. Es. Lunedì a venerdì 9:00 – 19:00",
   set_page_footernote:"Nota a piè di pagina", set_page_gallery:"Mostra galleria", set_page_booking:"Mostra modulo di prenotazione", set_page_chat:"Mostra assistente chat",
-  form_found_title:"Fondotinta suggerito",
+  form_photo_result:"Cosa dice la foto", form_color_rec:"Consiglio di colore", form_color_rec_sub:"Toni adatti a questo sottotono di pelle, con la loro formula.", form_rec_use:"Usa", form_rec_chosen:"Scelto", form_photo_clear:"Togli la foto", form_found_title:"Fondotinta suggerito",
   form_skin_confirm:"Misurato sulla foto: il colore della luce può alterarlo. Confermi il sottotono a occhio e lo regoli sopra se non corrisponde.",
   form_found_line:"Un fondotinta di tono {depth} con sottotono {tone}.",
   form_found_labels:"Sull'etichetta cerchi: {labels}.",
@@ -1980,6 +1980,69 @@ function renderFormulas(){
   html += '<button type="button" class="btn btn-sm btn-ghost" data-action="upload-photo-trigger">'+ICONS.upload+t('form_upload_btn')+'</button>';
   html += '<input type="file" id="skin-photo-input" accept="image/*" style="display:none">';
   html += '</div>';
+
+  /* ---------- what the photo said ----------
+     The reading used to vanish the moment the camera closed, leaving only a
+     toast and a changed dropdown: the stylist could not show the client
+     anything. The photo now stays on screen with everything read from it,
+     and each suggested tone carries the formula that produces it, so there
+     is nothing left to look up. Taking the photo and uploading one land
+     here identically. */
+  var sr = state.skinReading;
+  if(sr && sr.ok){
+    html += '<div class="card" style="padding:0;overflow:hidden;margin-bottom:20px;border-color:var(--gold)">';
+
+    html += '<div style="display:flex;gap:16px;align-items:center;padding:16px">';
+    if(sr.photo){
+      html += '<img src="'+sr.photo+'" alt="" style="width:104px;height:104px;border-radius:14px;object-fit:cover;flex:none;border:2px solid var(--gold)">';
+    }
+    html += '<div style="min-width:0">';
+    html += '<div class="eyebrow" style="margin-bottom:6px">'+t('form_photo_result')+'</div>';
+    html += '<div style="font-size:17px;line-height:1.35">'+esc(t('form_found_undertone_'+sr.tone))+'</div>';
+    html += '<div style="font-size:14px;color:var(--text-dim)">'+esc(t('form_found_depth_'+sr.depth))+'</div>';
+    html += '<button type="button" class="btn btn-sm btn-ghost" data-action="clear-skin" style="margin-top:10px">'+t('form_photo_clear')+'</button>';
+    html += '</div></div>';
+
+    // --- colour recommendations, each with its own formula ---
+    html += '<div style="border-top:1px solid var(--line);padding:16px">';
+    html += '<div class="eyebrow" style="margin-bottom:4px">'+t('form_color_rec')+'</div>';
+    html += '<p style="font-size:13px;color:var(--text-dim);margin-bottom:12px">'+esc(t('form_color_rec_sub'))+'</p>';
+    (SKIN_TONE_RECOMMEND[sr.tone]||[]).forEach(function(key){
+      var r = REFLECTS.filter(function(x){ return x.key===key; })[0];
+      if(!r) return;
+      var ff = computeFormula(li, key, notation);
+      var nA = codeNameMap[ff.reflect.code];
+      var linea = ff.reflect.key==='natural'
+        ? t('form_single', {gA:ff.gA, codeA:ff.codeA, nameA:nA})
+        : t('form_mix', {gA:ff.gA, codeA:ff.codeA, nameA:nA, gB:ff.gB, codeB:ff.codeB, nameB:codeNameMap[ff.reflect.secCode]});
+      var elegido = key===rk;
+      html += '<div style="display:flex;gap:12px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--line)">';
+      html += '<div style="width:34px;height:34px;border-radius:50%;flex:none;background:'+ff.resultHex+';border:2px solid '+(elegido?'var(--gold)':'var(--line-strong)')+'"></div>';
+      html += '<div style="flex:1;min-width:0">';
+      html += '<div style="font-size:14.5px;font-weight:500">'+esc(r.names[lang])+'</div>';
+      html += '<div style="font-size:13.5px;color:var(--text-dim)">'+esc(linea)+'</div>';
+      html += '<div style="font-size:12.5px;color:var(--text-faint)">'+esc(t('form_developer',{ml:ff.gA+ff.gB, vol:ff.vol, pct:ff.pct}))+'</div>';
+      html += '</div>';
+      html += '<button type="button" class="btn btn-sm'+(elegido?'':' btn-ghost')+'" data-action="formula-pick" data-key="'+key+'" style="flex:none'+(elegido?';border-color:var(--gold);background:var(--gold-soft);color:#23190c':'')+'">'+t(elegido?'form_rec_chosen':'form_rec_use')+'</button>';
+      html += '</div>';
+    });
+    html += '<p class="empty-note" style="margin:10px 0 0">'+t('form_skin_tip_'+sr.tone)+'</p>';
+    html += '</div>';
+
+    // --- foundation, from the same photo ---
+    html += '<div style="border-top:1px solid var(--line);padding:16px">';
+    html += '<div class="eyebrow" style="margin-bottom:8px">'+t('form_found_title')+'</div>';
+    html += '<p style="font-size:15px;margin-bottom:6px">'+esc(t('form_found_line', {
+      depth: t('form_found_depth_'+sr.depth),
+      tone: t('form_found_undertone_'+sr.tone)
+    }))+'</p>';
+    html += '<p style="font-size:13.5px;color:var(--text-dim);margin-bottom:6px">'+esc(t('form_found_labels', {labels: t('form_found_labels_'+sr.tone)}))+'</p>';
+    html += '<p style="font-size:12.5px;color:var(--text-faint);margin-bottom:6px">'+esc(t('form_found_tip'))+'</p>';
+    html += '<p style="font-size:12.5px;color:var(--text-faint)">'+esc(t('form_skin_confirm'))+'</p>';
+    html += '</div>';
+
+    html += '</div>';
+  }
   html += '<div class="field"><label>'+t('form_target')+'</label><select data-action="formula-target">'+targetOpts+'</select></div>';
 
   // The salon's own brands first, then the ones a salon in this country is
@@ -2008,21 +2071,6 @@ function renderFormulas(){
       '>'+esc(r.names[lang])+'</button>';
   }).join('')+'</div>';
   html += '<p class="empty-note" style="margin-bottom:18px">'+t('form_skin_tip_'+sk)+'</p>';
-
-  // Foundation shade, read from the very same photo as the undertone.
-  var sr = state.skinReading;
-  if(sr && sr.ok){
-    html += '<div class="card" style="background:var(--bg-soft,rgba(255,255,255,.03));padding:16px;margin-bottom:18px">';
-    html += '<div class="eyebrow" style="margin-bottom:8px">'+t('form_found_title')+'</div>';
-    html += '<p style="font-size:15px;margin-bottom:6px">'+esc(t('form_found_line', {
-      depth: t('form_found_depth_'+sr.depth),
-      tone: t('form_found_undertone_'+sr.tone)
-    }))+'</p>';
-    html += '<p style="font-size:13.5px;color:var(--text-dim);margin-bottom:6px">'+esc(t('form_found_labels', {labels: t('form_found_labels_'+sr.tone)}))+'</p>';
-    html += '<p style="font-size:12.5px;color:var(--text-faint);margin-bottom:6px">'+esc(t('form_found_tip'))+'</p>';
-    html += '<p style="font-size:12.5px;color:var(--text-faint)">'+esc(t('form_skin_confirm'))+'</p>';
-    html += '</div>';
-  }
 
   html += '<div style="display:flex; gap:20px; align-items:center; margin:0 0 24px;">';
   html += '<div style="text-align:center"><div style="width:72px;height:72px;border-radius:50%;background:'+f.baseHex+';border:2px solid var(--line-strong)"></div><div class="eyebrow" style="margin-top:8px">'+t('form_before')+'</div></div>';
@@ -2269,7 +2317,9 @@ function applySkinResult(res){
 function captureSkinTone(){
   var video = document.getElementById('skin-camera-video');
   if(!video || !video.videoWidth){ showToast(t('form_skin_fail_no_face'), 5000); return; }
-  var size = 160;
+  // 320 instead of 160: the same crop is both measured and shown back to
+  // the stylist, and a 160px thumbnail of a face is too coarse to judge.
+  var size = 320;
   var canvas = document.createElement('canvas');
   canvas.width = size; canvas.height = size;
   var ctx = canvas.getContext('2d');
@@ -2278,9 +2328,16 @@ function captureSkinTone(){
   // measure, and enough surrounding room to estimate the light.
   var cropSize = Math.min(vw, vh) * 0.75;
   var sx = (vw - cropSize)/2, sy = Math.max(0, (vh - cropSize)/2 - vh*0.03);
+  // The preview is mirrored, so un-mirror the capture or the photo comes
+  // back the wrong way round from what she was looking at.
+  ctx.save(); ctx.translate(size, 0); ctx.scale(-1, 1);
   ctx.drawImage(video, sx, sy, cropSize, cropSize, 0, 0, size, size);
+  ctx.restore();
   var res = analyzeSkinPixels(ctx.getImageData(0,0,size,size).data);
-  if(res.ok) closeCameraModal();
+  if(res.ok){
+    res.photo = canvas.toDataURL('image/jpeg', 0.82);
+    closeCameraModal();
+  }
   applySkinResult(res);
 }
 
@@ -2289,7 +2346,7 @@ function handleSkinPhotoUpload(file){
   var url = URL.createObjectURL(file);
   var img = new Image();
   img.onload = function(){
-    var size = 160;
+    var size = 320;
     var canvas = document.createElement('canvas');
     canvas.width = size; canvas.height = size;
     var ctx = canvas.getContext('2d');
@@ -2298,6 +2355,7 @@ function handleSkinPhotoUpload(file){
     var sx = (iw - cropSize)/2, sy = Math.max(0, (ih - cropSize)/2 - ih*0.04);
     ctx.drawImage(img, sx, sy, cropSize, cropSize, 0, 0, size, size);
     var res = analyzeSkinPixels(ctx.getImageData(0,0,size,size).data);
+    if(res.ok) res.photo = canvas.toDataURL('image/jpeg', 0.82);
     URL.revokeObjectURL(url);
     applySkinResult(res);
   };
@@ -3199,6 +3257,7 @@ document.addEventListener('click', function(e){
   }
   else if(action==='close-chat'){ closeChat(); }
   else if(action==='chat-back'){ if(actEl!==e.target) return; closeChat(); }
+  else if(action==='clear-skin'){ state.skinReading = null; render(); }
   else if(action==='open-camera'){ openCameraModal(); }
   else if(action==='close-camera'){ closeCameraModal(); }
   else if(action==='camera-back'){ if(actEl!==e.target) return; closeCameraModal(); }
