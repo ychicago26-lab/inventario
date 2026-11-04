@@ -2013,7 +2013,12 @@ function renderAgenda(){
         if(r.developer) html += '<div style="font-size:13px;color:var(--text-dim)">'+esc(r.developer)+'</div>';
         if(r.note) html += '<div style="font-size:13px;color:var(--text-dim);font-style:italic">'+esc(r.note)+'</div>';
         html += '</div>';
-        html += '<button class="btn btn-sm btn-ghost" data-action="reuse-color-record" data-id="'+r.id+'" style="flex:none">'+t('card_reuse')+'</button>';
+        // The same two actions as the Fichas tab: a card is just as likely
+        // to be wrong or duplicated when you reach it from the client.
+        html += '<div style="display:flex;gap:6px;flex:none">';
+        html += '<button class="btn btn-sm btn-ghost" data-action="reuse-color-record" data-id="'+r.id+'">'+t('card_reuse')+'</button>';
+        html += '<button class="btn btn-icon btn-danger" data-action="delete-color-record" data-id="'+r.id+'">'+ICONS.trash+'</button>';
+        html += '</div>';
         html += '</div>';
       });
     }
