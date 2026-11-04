@@ -1966,7 +1966,7 @@ function renderAgenda(){
     html += '</div>';
     html += '<div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">';
     html += '<button class="btn btn-primary btn-sm" data-action="new-visit" data-name="'+esc(nombreCv)+'">'+ICONS.plus+t('visit_add')+'</button>';
-    html += '<button class="btn btn-sm btn-ghost" data-action="new-appt">'+ICONS.plus+t('ag_add_appt')+'</button>';
+    html += '<button class="btn btn-sm btn-ghost" data-action="new-appt" data-name="'+esc(nombreCv)+'">'+ICONS.plus+t('ag_add_appt')+'</button>';
     html += '</div></div>';
 
     if(susCitas.length){
@@ -3413,8 +3413,8 @@ document.addEventListener('click', function(e){
     return;
   }
   var action = actEl.getAttribute('data-action');
-  if(action==='tab'){ state.tab = actEl.getAttribute('data-tab'); render(); }
-  else if(action==='ag-tab'){ state.agTab = actEl.getAttribute('data-agtab'); render(); }
+  if(action==='tab'){ state.tab = actEl.getAttribute('data-tab'); state.clientView = null; render(); }
+  else if(action==='ag-tab'){ state.agTab = actEl.getAttribute('data-agtab'); state.clientView = null; render(); }
   else if(action==='rep-range'){ state.repRange = actEl.getAttribute('data-range'); render(); }
   else if(action==='new-product'){ state.modal = {type:'product'}; render(); }
   else if(action==='edit-product'){ var pid=actEl.getAttribute('data-id'); state.modal = {type:'product', id:pid, data: state.products.find(function(x){return x.id===pid;})}; render(); }
@@ -3423,7 +3423,11 @@ document.addEventListener('click', function(e){
   else if(action==='new-client'){ state.modal = {type:'client'}; render(); }
   else if(action==='edit-client'){ var cid=actEl.getAttribute('data-id'); state.modal = {type:'client', id:cid, data: state.clients.find(function(x){return x.id===cid;})}; render(); }
   else if(action==='delete-client'){ if(confirm(t('common_delete_q'))){ Data.deleteDoc('clients', actEl.getAttribute('data-id')); } }
-  else if(action==='new-appt'){ state.modal = {type:'appt'}; render(); }
+  else if(action==='new-appt'){
+    var pre = actEl.getAttribute('data-name');
+    state.modal = pre ? {type:'appt', data:{clientName:pre}} : {type:'appt'};
+    render();
+  }
   else if(action==='edit-appt'){ var aid=actEl.getAttribute('data-id'); state.modal = {type:'appt', id:aid, data: state.appointments.find(function(x){return x.id===aid;})}; render(); }
   else if(action==='delete-appt'){ if(confirm(t('common_delete_q'))){ Data.deleteDoc('appointments', actEl.getAttribute('data-id')); } }
   else if(action==='confirm-request'){
@@ -3514,6 +3518,7 @@ document.addEventListener('click', function(e){
       state.formulaSkin = rec.skinTone || 'neutral';
       if(rec.brand) state.formulaBrand = rec.brand;
       state.tab = 'formulas';
+      state.clientView = null;
       render();
       showToast(t('card_reused', {name: rec.clientName}));
     }
