@@ -180,6 +180,37 @@ function findUserByName(users, fullName) {
   return users.find((u) => normalizeAnswer(u.fullName) === target) || null;
 }
 
+/* ---- quien manda dentro de un salon ----
+   La primera cuenta, la que se crea al abrir el salon, es la dueña. Las que
+   entran despues con el codigo de invitacion son del equipo.
+
+   Las cuentas creadas antes de que existieran los roles no traen el campo,
+   asi que se decide por antiguedad: la mas vieja es la dueña y el resto,
+   equipo. Se mira createdAt y no el orden de la tabla, porque updated_at
+   cambia cada vez que alguien cambia su contraseña y eso moveria la dueña. */
+function oldestUnroledId(users) {
+  let oldest = null;
+  for (const u of users) {
+    if (u.role === 'owner' || u.role === 'staff') continue;
+    if (!oldest || String(u.createdAt || '') < String(oldest.createdAt || '')) oldest = u;
+  }
+  return oldest ? oldest.id : null;
+}
+function ownerCount(users) {
+  return users.filter((u) => isOwner(users, u.id)).length;
+}
+function isOwner(users, userId) {
+  const u = users.find((x) => x.id === userId);
+  if (!u) return false;
+  if (u.role === 'owner') return true;
+  if (u.role === 'staff') return false;
+  /* Sin campo, la cuenta mas antigua de las que tampoco lo tienen es la
+     dueña. Se miran solo las cuentas sin campo a proposito: si se mirara a
+     todas, el dia que la consola crea una cuenta de rescate (que si trae
+     el campo) la dueña de siempre perderia su lugar sin haber hecho nada. */
+  return oldestUnroledId(users) === userId;
+}
+
 /* ================= email (Gmail) =================
    Sending runs through a Gmail account with an App Password, which is the
    simplest setup that does not need a verified domain. Set GMAIL_USER and
@@ -759,6 +790,10 @@ app.post('/api/admin/salons/:slug/access-account', requireOwner, async (req, res
     const id = genId();
     await upsertDoc(slug, 'users', id, {
       fullName: name,
+      // Entra como dueña a proposito: se crea desde la consola con la
+      // contraseña de administracion, y existe justamente para destrabar
+      // un salon. Una cuenta de equipo no podria hacerlo.
+      role: 'owner',
       passwordHash: hashPassword(password),
       recoveryQuestion: '',
       // Unguessable on purpose: this account has no recovery answer until
@@ -926,6 +961,9 @@ app.post('/api/:slug/register', authLimiter, async (req, res) => {
       if (!validInvite) {
         const authData = verifyToken(getBearerToken(req), slug);
         if (!authData) return res.status(401).json({ error: 'unauthorized' });
+        // Agregar a alguien a mano desde Ajustes es cosa de la dueña. Sin
+        // esto, una empleada podria abrir cuentas sin saber el codigo.
+        if (!isOwner(users, authData.userId)) return res.status(403).json({ error: 'owner_only' });
       }
     }
     if (findUserByName(users, fullName)) {
@@ -934,6 +972,7 @@ app.post('/api/:slug/register', authLimiter, async (req, res) => {
     const id = genId();
     await upsertDoc(slug, 'users', id, {
       fullName: fullName.trim(),
+      role: users.length === 0 ? 'owner' : 'staff',
       passwordHash: hashPassword(password),
       recoveryQuestion: recoveryQuestion.trim(),
       recoveryAnswerHash: hashPassword(normalizeAnswer(recoveryAnswer)),
@@ -1041,7 +1080,11 @@ app.post('/api/:slug/change-recovery', authLimiter, requireAuth, async (req, res
 app.get('/api/:slug/users', requireAuth, async (req, res) => {
   try {
     const users = await getUsers(req.params.slug);
-    res.json(users.map((u) => ({ id: u.id, fullName: u.fullName })));
+    res.json(users.map((u) => ({
+      id: u.id,
+      fullName: u.fullName,
+      role: isOwner(users, u.id) ? 'owner' : 'staff'
+    })));
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'server_error' });
@@ -1052,8 +1095,14 @@ app.delete('/api/:slug/users/:id', requireAuth, async (req, res) => {
   try {
     const slug = req.params.slug;
     const users = await getUsers(slug);
+    if (!isOwner(users, req.userId)) return res.status(403).json({ error: 'owner_only' });
     if (users.length <= 1) {
       return res.status(400).json({ error: 'last_user' });
+    }
+    // Una dueña se puede quitar, pero nunca la ultima: un salon sin dueña
+    // se queda sin quien cambie el codigo ni administre al equipo.
+    if (isOwner(users, req.params.id) && ownerCount(users) <= 1) {
+      return res.status(400).json({ error: 'cannot_remove_owner' });
     }
     await pool.query('DELETE FROM documents WHERE salon_id=$1 AND collection=$2 AND id=$3', [slug, 'users', req.params.id]);
     res.json({ ok: true });
@@ -1157,6 +1206,19 @@ app.put('/api/:slug/config', async (req, res) => {
     const data = verifyToken(getBearerToken(req), slug);
     if (!data) return res.status(401).json({ error: 'unauthorized' });
     if (await isSuspended(slug)) return res.status(403).json({ error: 'salon_suspended' });
+
+    /* El equipo puede ajustar marcas, servicios y la portada, pero no la
+       llave de entrada al salon ni la direccion a la que llegan los avisos.
+       Se conservan los valores guardados en vez de rechazar el envio, para
+       que un formulario que no trae esos campos no los borre sin querer. */
+    const salonUsers = await getUsers(slug);
+    if (!isOwner(salonUsers, data.userId)) {
+      for (const field of ['inviteCode', 'ownerEmail']) {
+        if (existing[field] === undefined) delete body[field];
+        else body[field] = existing[field];
+      }
+    }
+
     if (existing.passwordHash) body.passwordHash = existing.passwordHash; // preserve legacy field until migrated
     await upsertDoc(slug, 'config', 'main', body);
     res.json({ ok: true });
