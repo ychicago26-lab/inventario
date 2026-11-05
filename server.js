@@ -902,6 +902,11 @@ app.get('/api/:slug/landing', async (req, res) => {
     // A suspended salon's page goes quiet rather than announcing why.
     if (await isSuspended(req.params.slug)) return res.status(404).json({ error: 'not_found' });
     const src = cfg.landing || {};
+    /* Apagar la portada en Ajustes tiene que apagarla de verdad. Antes se
+       seguian enviando el telefono, la direccion y el correo del salon, y
+       era la pagina la que decidia no pintarlos: quien pidiera esta
+       direccion a mano los veia igual. */
+    if (src.enabled === false) return res.status(404).json({ error: 'not_found' });
     const landing = {};
     LANDING_TEXT_FIELDS.forEach((k) => {
       landing[k] = typeof src[k] === 'string' ? src[k] : '';
@@ -1396,6 +1401,14 @@ app.post('/api/:slug/public-chat', chatLimiter, async (req, res) => {
     if (!cfg) return res.status(404).json({ error: 'not_found' });
     if (await isSuspended(slug)) return res.status(404).json({ error: 'not_found' });
 
+    /* Si el salon apago su portada, o apago el chat dentro de ella, aqui no
+       se atiende a nadie. Ademas de respetar lo que eligio, evita que una
+       portada apagada siga gastando saldo de la cuenta de IA. */
+    const landingCfg = cfg.landing || {};
+    if (landingCfg.enabled === false || landingCfg.showChat === false) {
+      return res.status(404).json({ error: 'not_found' });
+    }
+
     const geminiKey = process.env.GEMINI_API_KEY;
     const anthropicKey = process.env.ANTHROPIC_API_KEY;
     if (!geminiKey && !anthropicKey) {
@@ -1614,7 +1627,27 @@ app.post('/api/cron/reminders', async (req, res) => {
 });
 
 // ---- generic collections (products, usage, clients, appointments) ----
-app.get('/api/:slug/:collection', requireAuth, async (req, res) => {
+/* Estas cuatro rutas sirven para cualquier coleccion que se les pida, y ahi
+   estaba el agujero: 'config' y 'users' tambien son colecciones. Quien
+   tuviera sesion en el salon podia escribir en ellas por aqui y saltarse
+   todos los controles de las rutas propias de cada una. Daba para ponerse
+   el codigo de invitacion que quisiera, fabricarse una cuenta de dueña, o
+   escribir encima de la contraseña de la dueña y entrar como ella.
+
+   Por eso ahora solo se aceptan las colecciones del trabajo diario. Es una
+   lista cerrada y no una lista de prohibidas: una coleccion nueva que se
+   agregue mañana no queda abierta por olvido. */
+const DATA_COLLECTIONS = new Set([
+  'products', 'usage', 'clients', 'color_records',
+  'visits', 'appointments', 'booking_requests'
+]);
+function onlyDataCollections(req, res, next) {
+  if (!DATA_COLLECTIONS.has(req.params.collection)) {
+    return res.status(404).json({ error: 'not_found' });
+  }
+  next();
+}
+app.get('/api/:slug/:collection', requireAuth, onlyDataCollections, async (req, res) => {
   try {
     const { slug, collection } = req.params;
     const r = await pool.query(
@@ -1628,7 +1661,7 @@ app.get('/api/:slug/:collection', requireAuth, async (req, res) => {
   }
 });
 
-app.post('/api/:slug/:collection', requireAuth, async (req, res) => {
+app.post('/api/:slug/:collection', requireAuth, onlyDataCollections, async (req, res) => {
   try {
     const { slug, collection } = req.params;
     const id = genId();
@@ -1643,7 +1676,7 @@ app.post('/api/:slug/:collection', requireAuth, async (req, res) => {
   }
 });
 
-app.put('/api/:slug/:collection/:id', requireAuth, async (req, res) => {
+app.put('/api/:slug/:collection/:id', requireAuth, onlyDataCollections, async (req, res) => {
   try {
     await upsertDoc(req.params.slug, req.params.collection, req.params.id, req.body || {});
     res.json({ ok: true });
@@ -1653,7 +1686,7 @@ app.put('/api/:slug/:collection/:id', requireAuth, async (req, res) => {
   }
 });
 
-app.patch('/api/:slug/:collection/:id', requireAuth, async (req, res) => {
+app.patch('/api/:slug/:collection/:id', requireAuth, onlyDataCollections, async (req, res) => {
   try {
     const { slug, collection, id } = req.params;
     const existing = await pool.query(
@@ -1670,7 +1703,7 @@ app.patch('/api/:slug/:collection/:id', requireAuth, async (req, res) => {
   }
 });
 
-app.delete('/api/:slug/:collection/:id', requireAuth, async (req, res) => {
+app.delete('/api/:slug/:collection/:id', requireAuth, onlyDataCollections, async (req, res) => {
   try {
     const { slug, collection, id } = req.params;
     await pool.query(
