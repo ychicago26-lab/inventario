@@ -1,0 +1,150 @@
+name: Copia de seguridad semanal
+
+# Una vez por semana le pide al servidor que se mande por correo una copia
+# completa de todo: los datos de cada salón, sus cuentas y su configuración.
+# Llega como archivo adjunto al correo del salón, y para restaurarla se
+# entra a la consola en /admin y se elige ese mismo archivo.
+#
+# Ejecutarlo de más no rompe nada: solo llega otro correo.
+on:
+  schedule:
+    # Domingos a las 15:00 UTC = 9:00 de la mañana en Illinois en invierno,
+    # 10:00 en verano. GitHub solo entiende UTC y no cambia con el horario
+    # de verano. El 0 del final es el domingo.
+    - cron: '0 15 * * 0'
+  # Permite lanzarlo a mano desde la pestaña Actions, para probar.
+  workflow_dispatch:
+
+jobs:
+  copia:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # La dirección va a la vista por lo mismo que en los recordatorios:
+      # es la web pública y taparla solo estorba cuando hay que leer los
+      # registros para entender un fallo.
+      APP_URL_POR_DEFECTO: https://kynaturebeauty.com
+      APP_URL: ${{ secrets.APP_URL }}
+      ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+    steps:
+      - name: Despertar el servicio
+        # En el plan gratuito de Render el servicio se duerme a los 15
+        # minutos y la primera petición tarda cerca de un minuto. La copia
+        # recorre la base entera, así que conviene que arranque despierto.
+        #
+        # Nunca hace fallar el trabajo: si no lo consigue, el paso siguiente
+        # lo intenta igual y es ese el que decide si hubo un problema real.
+        continue-on-error: true
+        run: |
+          set -u
+          URL="$(printf '%s' "${APP_URL:-}" | tr -d '[:space:]' | sed 's#/*$##')"
+          case "${URL}" in
+            http://*|https://*) ;;
+            *) URL="${APP_URL_POR_DEFECTO}" ;;
+          esac
+          echo "Despertando ${URL}"
+
+          for intento in 1 2 3 4 5 6; do
+            codigo=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 90 "${URL}/healthz") || codigo="000"
+            echo "intento ${intento}: HTTP ${codigo}"
+            if [ "${codigo}" = "200" ]; then
+              echo "Servicio despierto."
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "No respondió al despertarlo; se intenta la copia de todos modos."
+
+      - name: Pedir la copia
+        run: |
+          set -u
+          URL="$(printf '%s' "${APP_URL:-}" | tr -d '[:space:]' | sed 's#/*$##')"
+          case "${URL}" in
+            http://*|https://*) ;;
+            *) URL="${APP_URL_POR_DEFECTO}" ;;
+          esac
+          # Al pegar un secreto en GitHub se cuela un salto de línea con
+          # facilidad, y una contraseña con un salto al final simplemente no
+          # coincide. El servidor también recorta los extremos al compararla.
+          CLAVE="$(printf '%s' "${ADMIN_PASSWORD:-}" | tr -d '\r\n')"
+
+          if [ -z "${CLAVE}" ]; then
+            echo "Falta el secreto ADMIN_PASSWORD en el repositorio."
+            echo "Se pone en Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
+          # La contraseña viaja en el cuerpo de la petición y no en la
+          # dirección, para que no acabe escrita en ningún registro.
+          # --fail-with-body deja ver el motivo que devuelve el servidor en
+          # vez de dejar solo un código suelto.
+          cuerpo_login=$(printf '{"password":%s}' "$(printf '%s' "${CLAVE}" | python3 -c 'import json,sys;print(json.dumps(sys.stdin.read()))')")
+
+          respuesta=$(curl -sS -w '\n%{http_code}' --max-time 60 \
+            -X POST "${URL}/api/admin/login" \
+            -H 'content-type: application/json' \
+            -d "${cuerpo_login}") || respuesta="(sin respuesta)
+          000"
+          codigo=$(printf '%s' "${respuesta}" | tail -n1)
+          cuerpo=$(printf '%s' "${respuesta}" | sed '$d')
+
+          case "${codigo}" in
+            200) ;;
+            401)
+              echo "La contraseña ADMIN_PASSWORD no coincide con la que tiene Render."
+              exit 1
+              ;;
+            503)
+              echo "La consola está apagada: falta ADMIN_PASSWORD en Render."
+              exit 1
+              ;;
+            000)
+              echo "No se pudo conectar. Revisa que APP_URL sea la dirección correcta."
+              exit 1
+              ;;
+            *)
+              echo "Respuesta inesperada al entrar: HTTP ${codigo}"
+              exit 1
+              ;;
+          esac
+
+          TOKEN=$(printf '%s' "${cuerpo}" | python3 -c 'import json,sys;print(json.load(sys.stdin).get("token",""))')
+          if [ -z "${TOKEN}" ]; then
+            echo "El servidor aceptó la contraseña pero no devolvió una sesión."
+            exit 1
+          fi
+
+          # Sin "to" el servidor la manda a la dirección de Gmail que tiene
+          # configurada, que es justamente donde se quiere guardar.
+          for intento in 1 2 3; do
+            respuesta=$(curl -sS -w '\n%{http_code}' --max-time 180 \
+              -X POST "${URL}/api/admin/email-backup" \
+              -H "authorization: Bearer ${TOKEN}" \
+              -H 'content-type: application/json' \
+              -d '{}') || respuesta="(sin respuesta)
+          000"
+            codigo=$(printf '%s' "${respuesta}" | tail -n1)
+            cuerpo=$(printf '%s' "${respuesta}" | sed '$d')
+
+            echo "intento ${intento}: HTTP ${codigo}"
+            echo "respuesta: ${cuerpo}"
+
+            case "${codigo}" in
+              200)
+                echo "Copia enviada por correo."
+                exit 0
+                ;;
+              503)
+                echo "El correo no está configurado en Render (GMAIL_USER y GMAIL_APP_PASSWORD)."
+                exit 1
+                ;;
+              401)
+                echo "La sesión caducó antes de tiempo."
+                exit 1
+                ;;
+            esac
+            sleep 30
+          done
+
+          echo "No se pudo completar después de 3 intentos."
+          exit 1

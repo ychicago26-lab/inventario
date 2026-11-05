@@ -1,7 +1,8 @@
-databases:
-  - name: inventario-db
-    plan: free
-    region: oregon
+# La base de datos ya no se declara aqui. Vive en Neon y su direccion se
+# escribe a mano en el panel de Render, en Environment. Mientras este
+# archivo declaraba una base propia y ataba DATABASE_URL a ella, bastaba
+# con que Render releyera el archivo para apuntar la aplicacion a una base
+# vacia y dejarla sin datos.
 
 services:
   - type: web
@@ -12,10 +13,12 @@ services:
     buildCommand: npm install
     startCommand: npm start
     envVars:
+      # sync: false quiere decir que este valor NO se toca desde aqui: lo
+      # pone una persona en el panel y Render lo respeta. Es la direccion
+      # de la base en Neon y lleva la contraseña dentro, asi que nunca se
+      # escribe en este archivo, que si va a GitHub.
       - key: DATABASE_URL
-        fromDatabase:
-          name: inventario-db
-          property: connectionString
+        sync: false
       - key: GEMINI_API_KEY
         sync: false
       - key: ANTHROPIC_API_KEY
