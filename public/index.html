@@ -308,6 +308,10 @@ es:{
   forgot_new_password:"Nueva contraseña", forgot_submit:"Restablecer contraseña",
   set_security:"Seguridad", set_current_password:"Contraseña actual", set_new_password:"Nueva contraseña",
   set_change_password:"Cambiar contraseña", set_password_changed:"Contraseña actualizada",
+  set_password_hint:"Mínimo 10 caracteres.",
+  set_recovery_title:"Pregunta de seguridad", set_change_recovery:"Cambiar pregunta",
+  set_recovery_changed:"Pregunta de seguridad actualizada",
+  set_recovery_hint:"Quien acierte esta respuesta puede cambiar tu contraseña y entrar. Por eso conviene que la respuesta no sea un dato real que otros puedan saber: escribe algo inventado y guárdalo donde guardas tus contraseñas.",
   dash_sub:"Resumen de", dash_alerts:"Alertas de inventario", dash_no_alerts:"Todo tu inventario está en buen nivel.",
   dash_urgent:"Urgente", dash_low:"Stock bajo", dash_out_of:"agotado", dash_left:"Quedan",
   dash_used_today:"Usado hoy", dash_used_week:"Usado esta semana", dash_used_month:"Usado este mes",
@@ -444,6 +448,10 @@ en:{
   forgot_new_password:"New password", forgot_submit:"Reset password",
   set_security:"Security", set_current_password:"Current password", set_new_password:"New password",
   set_change_password:"Change password", set_password_changed:"Password updated",
+  set_password_hint:"At least 10 characters.",
+  set_recovery_title:"Security question", set_change_recovery:"Change question",
+  set_recovery_changed:"Security question updated",
+  set_recovery_hint:"Anyone who guesses this answer can reset your password and get in. So the answer should not be a real fact others could know: write something made up and keep it where you keep your passwords.",
   dash_sub:"Overview for", dash_alerts:"Inventory alerts", dash_no_alerts:"All your inventory is in good shape.",
   dash_urgent:"Urgent", dash_low:"Low stock", dash_out_of:"out of stock", dash_left:"Left",
   dash_used_today:"Used today", dash_used_week:"Used this week", dash_used_month:"Used this month",
@@ -580,6 +588,10 @@ pt:{
   forgot_new_password:"Nova senha", forgot_submit:"Redefinir senha",
   set_security:"Segurança", set_current_password:"Senha atual", set_new_password:"Nova senha",
   set_change_password:"Alterar senha", set_password_changed:"Senha atualizada",
+  set_password_hint:"Mínimo de 10 caracteres.",
+  set_recovery_title:"Pergunta de segurança", set_change_recovery:"Alterar pergunta",
+  set_recovery_changed:"Pergunta de segurança atualizada",
+  set_recovery_hint:"Quem acertar esta resposta pode mudar a sua senha e entrar. Por isso a resposta não deve ser um dado real que outros possam saber: escreva algo inventado e guarde onde guarda as suas senhas.",
   dash_sub:"Resumo de", dash_alerts:"Alertas de estoque", dash_no_alerts:"Seu estoque está em bom nível.",
   dash_urgent:"Urgente", dash_low:"Estoque baixo", dash_out_of:"esgotado", dash_left:"Restam",
   dash_used_today:"Usado hoje", dash_used_week:"Usado esta semana", dash_used_month:"Usado este mês",
@@ -716,6 +728,10 @@ fr:{
   forgot_new_password:"Nouveau mot de passe", forgot_submit:"Réinitialiser le mot de passe",
   set_security:"Sécurité", set_current_password:"Mot de passe actuel", set_new_password:"Nouveau mot de passe",
   set_change_password:"Changer le mot de passe", set_password_changed:"Mot de passe mis à jour",
+  set_password_hint:"10 caractères minimum.",
+  set_recovery_title:"Question de sécurité", set_change_recovery:"Changer la question",
+  set_recovery_changed:"Question de sécurité mise à jour",
+  set_recovery_hint:"Quiconque devine cette réponse peut changer votre mot de passe et entrer. La réponse ne doit donc pas être un fait réel que d\'autres pourraient connaître : écrivez quelque chose d\'inventé et conservez-le avec vos mots de passe.",
   dash_sub:"Résumé du", dash_alerts:"Alertes de stock", dash_no_alerts:"Votre stock est à un bon niveau.",
   dash_urgent:"Urgent", dash_low:"Stock faible", dash_out_of:"épuisé", dash_left:"Restant",
   dash_used_today:"Utilisé aujourd'hui", dash_used_week:"Utilisé cette semaine", dash_used_month:"Utilisé ce mois",
@@ -852,6 +868,10 @@ it:{
   forgot_new_password:"Nuova password", forgot_submit:"Reimposta password",
   set_security:"Sicurezza", set_current_password:"Password attuale", set_new_password:"Nuova password",
   set_change_password:"Cambia password", set_password_changed:"Password aggiornata",
+  set_password_hint:"Almeno 10 caratteri.",
+  set_recovery_title:"Domanda di sicurezza", set_change_recovery:"Cambia domanda",
+  set_recovery_changed:"Domanda di sicurezza aggiornata",
+  set_recovery_hint:"Chi indovina questa risposta può cambiare la tua password ed entrare. Perciò la risposta non dovrebbe essere un dato vero che altri possono sapere: scrivi qualcosa di inventato e conservalo dove tieni le password.",
   dash_sub:"Riepilogo del", dash_alerts:"Avvisi di magazzino", dash_no_alerts:"Il tuo magazzino è a buon livello.",
   dash_urgent:"Urgente", dash_low:"Scorte basse", dash_out_of:"esaurito", dash_left:"Rimangono",
   dash_used_today:"Usato oggi", dash_used_week:"Usato questa settimana", dash_used_month:"Usato questo mese",
@@ -1678,8 +1698,8 @@ function renderOnboarding(){
       '<div class="field"><label>'+t('set_owner_email')+'</label><input id="ob-email" type="email" placeholder="correo@ejemplo.com"></div>'+
       '<p style="font-size:12px;color:var(--text-faint);margin:-8px 0 14px">'+t('set_owner_email_hint')+'</p>'+
       '<div class="row2">'+
-        '<div class="field"><label>'+t('onb_password')+'</label><input required type="password" minlength="4" id="ob-password" autocapitalize="none" autocorrect="off" spellcheck="false"></div>'+
-        '<div class="field"><label>'+t('onb_password_confirm')+'</label><input required type="password" minlength="4" id="ob-password-confirm" autocapitalize="none" autocorrect="off" spellcheck="false"></div>'+
+        '<div class="field"><label>'+t('onb_password')+'</label><input required type="password" minlength="10" id="ob-password" autocapitalize="none" autocorrect="off" spellcheck="false"></div>'+
+        '<div class="field"><label>'+t('onb_password_confirm')+'</label><input required type="password" minlength="10" id="ob-password-confirm" autocapitalize="none" autocorrect="off" spellcheck="false"></div>'+
       '</div>'+
       '<p style="font-size:12px;color:var(--text-faint);margin:-8px 0 14px">'+t('onb_password_hint')+'</p>'+
       '<div class="field"><label>'+t('onb_recovery_question')+'</label><input required id="ob-recovery-question" placeholder="'+t('onb_recovery_question_ph')+'"></div>'+
@@ -1702,8 +1722,8 @@ function renderLogin(){
     '<form id="login-form">'+
       '<div class="field"><label>'+t('auth_fullname')+'</label><input required id="auth-fullname" placeholder="'+t('auth_fullname_ph')+'" autofocus autocapitalize="none" autocorrect="off" spellcheck="false"></div>'+
       (migrate?'<div class="field"><label>'+t('auth_old_password')+'</label><input required type="password" id="auth-old-password" autocapitalize="none" autocorrect="off" spellcheck="false"></div>':'')+
-      '<div class="field"><label>'+(isNew?t('onb_password'):t('auth_password'))+'</label><input required type="password" minlength="4" id="auth-password" autocapitalize="none" autocorrect="off" spellcheck="false"></div>'+
-      (isNew?'<div class="field"><label>'+t('onb_password_confirm')+'</label><input required type="password" minlength="4" id="auth-password-confirm" autocapitalize="none" autocorrect="off" spellcheck="false"></div>':'')+
+      '<div class="field"><label>'+(isNew?t('onb_password'):t('auth_password'))+'</label><input required type="password" minlength="'+(isNew?10:4)+'" id="auth-password" autocapitalize="none" autocorrect="off" spellcheck="false"></div>'+
+      (isNew?'<div class="field"><label>'+t('onb_password_confirm')+'</label><input required type="password" minlength="10" id="auth-password-confirm" autocapitalize="none" autocorrect="off" spellcheck="false"></div>':'')+
       (isNew?'<div class="field"><label>'+t('onb_recovery_question')+'</label><input required id="auth-recovery-question" placeholder="'+t('onb_recovery_question_ph')+'"></div>':'')+
       (isNew?'<div class="field"><label>'+t('onb_recovery_answer')+'</label><input required id="auth-recovery-answer" placeholder="'+t('onb_recovery_answer_ph')+'"></div>':'')+
       (isNew?'<p style="font-size:12px;color:var(--text-faint);margin:-8px 0 14px">'+t('onb_recovery_hint')+'</p>':'')+
@@ -1721,8 +1741,8 @@ function renderCreateAccount(){
     '<form id="create-account-form">'+
       '<div class="field"><label>'+t('auth_invite_code')+'</label><input required id="ca-invite-code" placeholder="'+t('auth_invite_code_ph')+'" autofocus></div>'+
       '<div class="field"><label>'+t('auth_fullname')+'</label><input required id="ca-fullname" placeholder="'+t('auth_fullname_ph')+'"></div>'+
-      '<div class="field"><label>'+t('onb_password')+'</label><input required type="password" minlength="4" id="ca-password" autocapitalize="none" autocorrect="off" spellcheck="false"></div>'+
-      '<div class="field"><label>'+t('onb_password_confirm')+'</label><input required type="password" minlength="4" id="ca-password-confirm" autocapitalize="none" autocorrect="off" spellcheck="false"></div>'+
+      '<div class="field"><label>'+t('onb_password')+'</label><input required type="password" minlength="10" id="ca-password" autocapitalize="none" autocorrect="off" spellcheck="false"></div>'+
+      '<div class="field"><label>'+t('onb_password_confirm')+'</label><input required type="password" minlength="10" id="ca-password-confirm" autocapitalize="none" autocorrect="off" spellcheck="false"></div>'+
       '<div class="field"><label>'+t('onb_recovery_question')+'</label><input required id="ca-recovery-question" placeholder="'+t('onb_recovery_question_ph')+'"></div>'+
       '<div class="field"><label>'+t('onb_recovery_answer')+'</label><input required id="ca-recovery-answer" placeholder="'+t('onb_recovery_answer_ph')+'"></div>'+
       '<p style="font-size:12px;color:var(--text-faint);margin:-8px 0 14px">'+t('onb_recovery_hint')+'</p>'+
@@ -1739,7 +1759,7 @@ function renderForgotPassword(){
   if(step==='answer'){
     body = '<form id="forgot-answer-form">'+
       '<div class="field"><label>'+esc(state.authForgotQuestion)+'</label><input required id="forgot-answer" autofocus></div>'+
-      '<div class="field"><label>'+t('forgot_new_password')+'</label><input required type="password" minlength="4" id="forgot-new-password" autocapitalize="none" autocorrect="off" spellcheck="false"></div>'+
+      '<div class="field"><label>'+t('forgot_new_password')+'</label><input required type="password" minlength="10" id="forgot-new-password" autocapitalize="none" autocorrect="off" spellcheck="false"></div>'+
       (state.authError?'<p style="font-size:13px;color:var(--bad);margin-bottom:10px">'+esc(state.authError)+'</p>':'')+
       '<button type="submit" class="btn btn-primary" style="width:100%; margin-top:6px;"'+(state.authBusy?' disabled':'')+'>'+t('forgot_submit')+'</button>'+
       '<button type="button" class="btn btn-ghost" data-action="auth-back-to-login" style="width:100%;margin-top:8px">'+t('auth_back_to_login')+'</button>'+
@@ -2703,8 +2723,20 @@ function renderSettings(){
   html += '<h3 style="margin-bottom:16px;font-size:19px;color:var(--gold-soft)">'+t('set_security')+'</h3>';
   html += '<form id="password-form">';
   html += '<div class="field"><label>'+t('set_current_password')+'</label><input required type="password" id="pw-current" autocapitalize="none" autocorrect="off" spellcheck="false"></div>';
-  html += '<div class="field"><label>'+t('set_new_password')+'</label><input required type="password" minlength="4" id="pw-new" autocapitalize="none" autocorrect="off" spellcheck="false"></div>';
+  html += '<div class="field"><label>'+t('set_new_password')+'</label><input required type="password" minlength="10" id="pw-new" autocapitalize="none" autocorrect="off" spellcheck="false"></div>';
+  html += '<p style="color:var(--text-dim);font-size:13px;margin:-8px 0 12px">'+t('set_password_hint')+'</p>';
   html += '<button type="submit" class="btn btn-primary">'+t('set_change_password')+'</button>';
+  html += '</form>';
+  html += '</div>';
+
+  html += '<div class="card" style="max-width:560px;margin-top:18px">';
+  html += '<h3 style="margin-bottom:6px;font-size:19px;color:var(--gold-soft)">'+t('set_recovery_title')+'</h3>';
+  html += '<p style="color:var(--text-dim);font-size:13px;margin-bottom:12px">'+t('set_recovery_hint')+'</p>';
+  html += '<form id="recovery-form">';
+  html += '<div class="field"><label>'+t('set_current_password')+'</label><input required type="password" id="rc-current" autocapitalize="none" autocorrect="off" spellcheck="false"></div>';
+  html += '<div class="field"><label>'+t('onb_recovery_question')+'</label><input required id="rc-question" placeholder="'+t('onb_recovery_question_ph')+'"></div>';
+  html += '<div class="field"><label>'+t('onb_recovery_answer')+'</label><input required id="rc-answer" placeholder="'+t('onb_recovery_answer_ph')+'" autocapitalize="none" autocorrect="off" spellcheck="false"></div>';
+  html += '<button type="submit" class="btn btn-primary">'+t('set_change_recovery')+'</button>';
   html += '</form>';
   html += '</div>';
 
@@ -2716,7 +2748,7 @@ function renderSettings(){
   }).join('')+'</div>';
   html += '<form id="team-form">';
   html += '<div class="field"><label>'+t('set_add_member')+'</label><input required id="tf-name" placeholder="'+t('set_member_name_ph')+'"></div>';
-  html += '<div class="field"><label>'+t('onb_password')+'</label><input required type="password" minlength="4" id="tf-password" autocapitalize="none" autocorrect="off" spellcheck="false"></div>';
+  html += '<div class="field"><label>'+t('onb_password')+'</label><input required type="password" minlength="10" id="tf-password" autocapitalize="none" autocorrect="off" spellcheck="false"></div>';
   html += '<div class="field"><label>'+t('onb_recovery_question')+'</label><input required id="tf-recovery-question" placeholder="'+t('onb_recovery_question_ph')+'"></div>';
   html += '<div class="field"><label>'+t('onb_recovery_answer')+'</label><input required id="tf-recovery-answer" placeholder="'+t('onb_recovery_answer_ph')+'"></div>';
   html += '<button type="submit" class="btn btn-primary">'+t('common_add')+'</button>';
@@ -3321,6 +3353,22 @@ document.addEventListener('submit', function(e){
           showToast(t('set_password_changed'));
           document.getElementById('pw-current').value = '';
           document.getElementById('pw-new').value = '';
+        } else {
+          showToast(authErrorMessage(r, 'auth_wrong_password'));
+        }
+      });
+  }
+  if(e.target.id==='recovery-form'){
+    e.preventDefault();
+    var rcPw = document.getElementById('rc-current').value;
+    var rcQ = document.getElementById('rc-question').value.trim();
+    var rcA = document.getElementById('rc-answer').value.trim();
+    apiFetch('/change-recovery', {method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({currentPassword:rcPw, recoveryQuestion:rcQ, recoveryAnswer:rcA})})
+      .then(function(r){
+        if(r.ok){
+          showToast(t('set_recovery_changed'));
+          document.getElementById('rc-current').value = '';
+          document.getElementById('rc-answer').value = '';
         } else {
           showToast(authErrorMessage(r, 'auth_wrong_password'));
         }

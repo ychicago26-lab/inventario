@@ -71,6 +71,12 @@ const TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 // password is invisible: the form looks right and the answer is just
 // "wrong password". Trimming on the way in and on the way out means the
 // two always agree, and nobody is locked out by something they cannot see.
+// Cuatro caracteres se adivinan en minutos. Diez no es una cifra magica,
+// pero saca la contraseña del alcance de quien prueba a mano y del diccionario
+// corto. Solo se exige al CREAR o CAMBIAR una contraseña: al entrar no se mide
+// nada, para no dejar fuera a quien ya tiene una mas corta.
+const MIN_PASSWORD = 10;
+
 function cleanPassword(v) {
   return typeof v === 'string' ? v.trim() : v;
 }
@@ -900,7 +906,7 @@ app.post('/api/:slug/register', authLimiter, async (req, res) => {
     let { fullName, password, recoveryQuestion, recoveryAnswer, oldPassword, inviteCode } = req.body || {};
     password = cleanPassword(password);
     oldPassword = cleanPassword(oldPassword);
-    if (!fullName || !fullName.trim() || !password || password.length < 4 || !recoveryQuestion || !recoveryAnswer) {
+    if (!fullName || !fullName.trim() || !password || password.length < MIN_PASSWORD || !recoveryQuestion || !recoveryAnswer) {
       return res.status(400).json({ error: 'invalid_request' });
     }
     if (isTooLong(fullName, 120) || isTooLong(password, 200) || isTooLong(recoveryQuestion, 300) || isTooLong(recoveryAnswer, 300) || isTooLong(oldPassword, 200) || isTooLong(inviteCode, 100)) {
@@ -981,7 +987,7 @@ app.post('/api/:slug/forgot-password/reset', authLimiter, async (req, res) => {
     const slug = req.params.slug;
     let { fullName, answer, newPassword } = req.body || {};
     newPassword = cleanPassword(newPassword);
-    if (!newPassword || newPassword.length < 4) return res.status(400).json({ error: 'invalid_request' });
+    if (!newPassword || newPassword.length < MIN_PASSWORD) return res.status(400).json({ error: 'invalid_request' });
     if (isTooLong(fullName, 120) || isTooLong(answer, 300) || isTooLong(newPassword, 200)) {
       return res.status(400).json({ error: 'invalid_request' });
     }
@@ -993,6 +999,39 @@ app.post('/api/:slug/forgot-password/reset', authLimiter, async (req, res) => {
     user.passwordHash = hashPassword(newPassword);
     await upsertDoc(slug, 'users', user.id, user);
     res.json({ token: signToken(slug, user.id) });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+// La respuesta de recuperacion es una segunda contraseña: quien la acierta
+// cambia la clave y entra, sin pasar por el correo. Hasta ahora se fijaba al
+// crear la cuenta y ya no habia forma de tocarla, asi que una respuesta
+// adivinable -- el nombre de la mascota, el de la primera clienta -- quedaba
+// ahi para siempre. Pide la contraseña actual para que no baste con una
+// sesion abierta en un telefono prestado.
+app.post('/api/:slug/change-recovery', authLimiter, requireAuth, async (req, res) => {
+  try {
+    const slug = req.params.slug;
+    const users = await getUsers(slug);
+    const user = users.find((u) => u.id === req.userId);
+    let { currentPassword, recoveryQuestion, recoveryAnswer } = req.body || {};
+    currentPassword = cleanPassword(currentPassword);
+    if (!user || !verifyPassword(currentPassword, user.passwordHash)) {
+      return res.status(401).json({ error: 'invalid_password' });
+    }
+    if (!recoveryQuestion || !String(recoveryQuestion).trim() ||
+        !recoveryAnswer || !String(recoveryAnswer).trim()) {
+      return res.status(400).json({ error: 'invalid_request' });
+    }
+    if (isTooLong(recoveryQuestion, 300) || isTooLong(recoveryAnswer, 300)) {
+      return res.status(400).json({ error: 'invalid_request' });
+    }
+    user.recoveryQuestion = String(recoveryQuestion).trim();
+    user.recoveryAnswerHash = hashPassword(normalizeAnswer(recoveryAnswer));
+    await upsertDoc(slug, 'users', user.id, user);
+    res.json({ ok: true });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'server_error' });
@@ -1035,7 +1074,7 @@ app.post('/api/:slug/change-password', authLimiter, requireAuth, async (req, res
     if (!user || !verifyPassword(currentPassword, user.passwordHash)) {
       return res.status(401).json({ error: 'invalid_password' });
     }
-    if (!newPassword || newPassword.length < 4 || isTooLong(newPassword, 200)) {
+    if (!newPassword || newPassword.length < MIN_PASSWORD || isTooLong(newPassword, 200)) {
       return res.status(400).json({ error: 'invalid_request' });
     }
     user.passwordHash = hashPassword(newPassword);
