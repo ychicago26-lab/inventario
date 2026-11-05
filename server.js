@@ -641,49 +641,95 @@ app.get('/api/admin/export', requireOwner, async (req, res) => {
    JSON in a tab instead of saving it. Mailing it to yourself always works,
    and it puts the copy somewhere that is not the phone, which is what a
    backup is for. */
+/* Arma la copia completa y la manda por correo. La usan dos sitios: el
+   boton de la consola y el trabajo semanal pegado a los recordatorios.
+   Devuelve cuantos registros llevaba, o lanza si algo falla, para que cada
+   quien decida que hacer con el fallo. */
+async function enviarCopiaPorCorreo(destino) {
+  const to = (destino || GMAIL_USER || '').toString().trim();
+  if (!looksLikeEmail(to)) {
+    const e = new Error('invalid_email');
+    e.code = 'invalid_email';
+    throw e;
+  }
+
+  const r = await pool.query(
+    'SELECT salon_id, collection, id, data, updated_at FROM documents ORDER BY salon_id, collection, id'
+  );
+  const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+  const contenido = JSON.stringify({
+    format: 'inventario-backup',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    count: r.rows.length,
+    documents: r.rows
+  });
+
+  const salones = new Set(r.rows.map((x) => x.salon_id).filter((x) => x !== ADMIN_NS));
+  await mailer.sendMail({
+    from: '"' + (MAIL_FROM_NAME || 'Inventario').replace(/["\\\r\n]/g, '') + '" <' + GMAIL_USER + '>',
+    to,
+    subject: `Copia de seguridad — ${r.rows.length} registros`,
+    text:
+      `Adjunta va la copia de seguridad completa de la aplicación.\n\n` +
+      `Registros: ${r.rows.length}\n` +
+      `Salones: ${salones.size}\n` +
+      `Fecha: ${new Date().toLocaleString('es')}\n\n` +
+      `Guarda este correo. Para restaurar, entra a la consola, pulsa ` +
+      `"Restaurar desde un archivo" y elige el archivo adjunto.`,
+    attachments: [{
+      filename: `inventario-copia-${stamp}.json`,
+      content: contenido,
+      contentType: 'application/json'
+    }]
+  });
+
+  return { to, count: r.rows.length };
+}
+
 app.post('/api/admin/email-backup', requireOwner, async (req, res) => {
   try {
     if (!mailEnabled) return res.status(503).json({ error: 'mail_not_configured' });
-    const to = ((req.body && req.body.to) || GMAIL_USER || '').toString().trim();
-    if (!looksLikeEmail(to)) return res.status(400).json({ error: 'invalid_email' });
-
-    const r = await pool.query(
-      'SELECT salon_id, collection, id, data, updated_at FROM documents ORDER BY salon_id, collection, id'
-    );
-    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
-    const contenido = JSON.stringify({
-      format: 'inventario-backup',
-      version: 1,
-      exportedAt: new Date().toISOString(),
-      count: r.rows.length,
-      documents: r.rows
-    });
-
-    const salones = new Set(r.rows.map((x) => x.salon_id).filter((x) => x !== ADMIN_NS));
-    await mailer.sendMail({
-      from: '"' + (MAIL_FROM_NAME || 'Inventario').replace(/["\\\r\n]/g, '') + '" <' + GMAIL_USER + '>',
-      to,
-      subject: `Copia de seguridad — ${r.rows.length} registros`,
-      text:
-        `Adjunta va la copia de seguridad completa de la aplicación.\n\n` +
-        `Registros: ${r.rows.length}\n` +
-        `Salones: ${salones.size}\n` +
-        `Fecha: ${new Date().toLocaleString('es')}\n\n` +
-        `Guarda este correo. Para restaurar, entra a la consola, pulsa ` +
-        `"Restaurar desde un archivo" y elige el archivo adjunto.`,
-      attachments: [{
-        filename: `inventario-copia-${stamp}.json`,
-        content: contenido,
-        contentType: 'application/json'
-      }]
-    });
-
-    res.json({ ok: true, to, count: r.rows.length });
+    const hecho = await enviarCopiaPorCorreo((req.body && req.body.to) || '');
+    res.json({ ok: true, to: hecho.to, count: hecho.count });
   } catch (e) {
+    if (e && e.code === 'invalid_email') return res.status(400).json({ error: 'invalid_email' });
     console.error('Backup email failed:', e && e.message);
     res.status(502).json({ error: 'send_failed' });
   }
 });
+
+/* La copia semanal viaja pegada al trabajo diario de recordatorios, que ya
+   existe y ya funciona. Asi no hace falta montar un segundo trabajo ni
+   guardar otra contraseña en ningun sitio.
+
+   No se mira si hoy es domingo sino cuanto hace de la ultima: si el dia que
+   tocaba el servicio estaba caido, la copia sale al dia siguiente en vez de
+   perderse una semana entera. Y como queda anotada, ejecutar el trabajo
+   varias veces el mismo dia no manda varias copias. */
+const DIAS_ENTRE_COPIAS = 7;
+async function copiaSemanalSiTocaba() {
+  if (!mailEnabled) return { hecha: false, motivo: 'sin_correo' };
+  try {
+    const marca = await getAdminDoc('meta', 'backup');
+    const ultima = marca && marca.lastAt ? Date.parse(marca.lastAt) : NaN;
+    const dias = Number.isFinite(ultima) ? (Date.now() - ultima) / 86400000 : Infinity;
+    if (dias < DIAS_ENTRE_COPIAS) return { hecha: false, motivo: 'reciente' };
+
+    const hecho = await enviarCopiaPorCorreo('');
+    // Se anota despues de enviar: si el envio falla, la proxima vuelta lo
+    // reintenta en vez de dar por hecha una copia que nunca salio.
+    await upsertDoc(ADMIN_NS, 'meta', 'backup', {
+      lastAt: new Date().toISOString(),
+      count: hecho.count
+    });
+    return { hecha: true, count: hecho.count };
+  } catch (e) {
+    // Nunca estropea los recordatorios: son lo que esperan las clientas.
+    console.error('Weekly backup failed:', e && e.message);
+    return { hecha: false, motivo: 'fallo' };
+  }
+}
 
 // Restoring writes each row back by its own key, so running it twice does
 // nothing the second time and it can be pointed at an empty database or at
@@ -1619,7 +1665,9 @@ app.post('/api/cron/reminders', async (req, res) => {
       }
     }
 
-    res.json({ date: target, found: rows.rows.length, sent, skipped, mailEnabled });
+    const copia = await copiaSemanalSiTocaba();
+
+    res.json({ date: target, found: rows.rows.length, sent, skipped, mailEnabled, copia });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'server_error' });
