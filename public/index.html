@@ -1251,19 +1251,81 @@ function setLang(l){
 function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 
 /* ================= backend data layer (REST + polling) ================= */
+/* ---------- cada cuanto se vuelve a preguntar al servidor ----------
+   La pantalla se mantiene al dia preguntando al servidor una y otra vez.
+   Antes preguntaba cada 4 segundos, siempre, pasara lo que pasara: una
+   pestaña olvidada en el mostrador hacia unas doscientas mil peticiones al
+   dia ella sola, y cada una es una consulta a la base de datos. Con un
+   salon se aguanta; con varios, se cae.
+
+   Ahora el ritmo se adapta a lo que esta pasando:
+     - Pestaña escondida (otra ventana, otra app, el telefono bloqueado):
+       no pregunta nada. Al volver, pregunta enseguida, asi que no se ve
+       informacion vieja ni un instante.
+     - Trabajando: cada 4 segundos, igual que antes.
+     - Abierta pero sin tocar nada en 3 minutos: cada 20 segundos. Al
+       primer toque vuelve al ritmo rapido.
+
+   Para quien lo usa no cambia nada. Lo que cambia es la carga. */
+var ACTIVO_MS = 4000, OCIOSO_MS = 20000, OCIO_TRAS_MS = 3*60*1000;
+var ultimoToque = Date.now();
+/* Solo gestos de verdad: un dedo, un boton, una tecla, la rueda.
+   Nada de 'scroll' ni 'mousemove'. Al redibujar la pantalla tras cada
+   consulta, el navegador dispara un 'scroll' por su cuenta, y contarlo
+   como actividad dejaba la aplicacion creyendose siempre en uso: nunca
+   bajaba el ritmo, que era justo lo que se queria arreglar. */
+['pointerdown','keydown','touchstart','wheel'].forEach(function(ev){
+  document.addEventListener(ev, function(){ ultimoToque = Date.now(); }, {passive:true, capture:true});
+});
+function intervaloAhora(){
+  return (Date.now() - ultimoToque > OCIO_TRAS_MS) ? OCIOSO_MS : ACTIVO_MS;
+}
+
+/* Todas las suscripciones comparten un solo relojito. Asi se preguntan
+   todas a la vez y no goteando, que es mas facil de seguir cuando algo va
+   mal, y sobre todo asi basta un sitio para decidir si toca preguntar. */
+var suscripciones = [];
+var relojPuesto = null;
+function programarSiguiente(){
+  clearTimeout(relojPuesto);
+  relojPuesto = setTimeout(rondaDePreguntas, intervaloAhora());
+}
+function rondaDePreguntas(){
+  if(!document.hidden){
+    suscripciones.forEach(function(s){ s.tick(); });
+  }
+  programarSiguiente();
+}
+document.addEventListener('visibilitychange', function(){
+  if(!document.hidden){
+    // Al volver a la pestaña se refresca ya, sin esperar al siguiente turno.
+    ultimoToque = Date.now();
+    suscripciones.forEach(function(s){ s.tick(); });
+    programarSiguiente();
+  }
+});
+function suscribir(tick){
+  var entrada = {tick: tick};
+  suscripciones.push(entrada);
+  tick();
+  if(suscripciones.length === 1) programarSiguiente();
+  return function(){
+    var i = suscripciones.indexOf(entrada);
+    if(i !== -1) suscripciones.splice(i, 1);
+    if(!suscripciones.length){ clearTimeout(relojPuesto); relojPuesto = null; }
+  };
+}
+
 var Data = {
   init: async function(){ state.dbAvailable = true; },
   subscribeConfig: function(cb){
     var stopped = false;
-    function tick(){
+    return suscribir(function(){
       if(stopped) return;
       apiFetch('/config').then(function(r){ return r.ok ? r.json() : null; })
         .then(function(cfg){ if(!stopped) cb(cfg); })
         .catch(function(){ if(!stopped) cb(null); });
-    }
-    tick();
-    var iv = setInterval(tick, 4000);
-    return function(){ stopped = true; clearInterval(iv); };
+    });
   },
   setConfig: async function(data){
     var r = await apiFetch('/config', {method:'PUT', headers:{'content-type':'application/json'}, body:JSON.stringify(data)});
@@ -1273,15 +1335,12 @@ var Data = {
   },
   subscribeCollection: function(name, cb){
     var stopped = false;
-    function tick(){
+    return suscribir(function(){
       if(stopped) return;
       apiFetch('/'+name).then(function(r){ return r.ok ? r.json() : []; })
         .then(function(list){ if(!stopped) cb(list); })
         .catch(function(){ if(!stopped) cb([]); });
-    }
-    tick();
-    var iv = setInterval(tick, 4000);
-    return function(){ stopped = true; clearInterval(iv); };
+    });
   },
   addDoc: async function(coll, data){
     var r = await apiFetch('/'+coll, {method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify(data)});

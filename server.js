@@ -1820,6 +1820,17 @@ app.use((req, res) => {
 // Final safety net for anything thrown outside the per-route try/catch
 // blocks. Never leaks stack traces or error details to the client.
 app.use((err, req, res, next) => {
+  /* Un cuerpo mal formado es culpa de quien llama, no del servidor: pasa
+     cuando se corta la conexion a medio envio, que con un telefono en
+     mala cobertura es de lo mas normal. Devolver 500 por eso confunde a
+     quien lo ve y, peor, esconde los fallos de verdad entre ruido cuando
+     hay que revisar los registros. */
+  const codigo = Number(err && (err.statusCode || err.status));
+  if (codigo >= 400 && codigo < 500) {
+    if (req.path.startsWith('/api/')) return res.status(codigo).json({ error: 'invalid_request' });
+    return res.status(codigo).send(errorPage(codigo, 'Petición incorrecta', 'No se pudo leer la petición. Vuelva a intentarlo.'));
+  }
+
   console.error('Unhandled error:', err);
   if (req.path.startsWith('/api/')) return res.status(500).json({ error: 'server_error' });
   res.status(500).send(errorPage(500, 'Algo salió mal', 'Ocurrió un error inesperado. Por favor intente de nuevo en unos momentos.'));
