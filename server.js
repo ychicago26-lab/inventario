@@ -419,7 +419,13 @@ const SIGNUP_CODE = (process.env.SIGNUP_CODE || '').trim();
 // Lets the welcome screen know whether to ask for a code, without ever
 // revealing the code itself.
 app.get('/api/signup-info', (req, res) => {
-  res.json({ codeRequired: !!SIGNUP_CODE });
+  /* La pantalla de alta solo pinta la casilla del codigo cuando esto dice
+     que hace falta. Antes solo miraba SIGNUP_CODE, el codigo compartido de
+     antes; con la consola de invitaciones encendida y SIGNUP_CODE ya
+     retirado, decía que no hacía falta ninguno. La casilla desaparecía, el
+     salón nuevo rellenaba todo, y el servidor lo rechazaba por no traer el
+     código que nunca tuvo dónde escribir. */
+  res.json({ codeRequired: !!(SIGNUP_CODE || adminEnabled) });
 });
 
 // Forgives how a code was typed, not what it is. Upper-cases it and drops
