@@ -233,7 +233,14 @@ let mailer = null;
 if (mailEnabled) {
   mailer = nodemailer.createTransport({
     service: 'gmail',
-    auth: { user: GMAIL_USER, pass: GMAIL_APP_PASSWORD }
+    auth: { user: GMAIL_USER, pass: GMAIL_APP_PASSWORD },
+    /* Sin esto, nodemailer espera dos minutos a que Gmail conteste. Un
+       trabajo que deberia tardar segundos se quedaba colgado ahi, y quien
+       lo llamaba se rendia antes de recibir respuesta. Mas vale fallar
+       pronto y claro: el que llama lo reintenta en el siguiente turno. */
+    connectionTimeout: 20000,
+    greetingTimeout: 10000,
+    socketTimeout: 45000
   });
   console.log('Email enabled, sending as', GMAIL_USER);
 } else {
@@ -1671,9 +1678,17 @@ app.post('/api/cron/reminders', async (req, res) => {
       }
     }
 
-    const copia = await copiaSemanalSiTocaba();
+    res.json({ date: target, found: rows.rows.length, sent, skipped, mailEnabled });
 
-    res.json({ date: target, found: rows.rows.length, sent, skipped, mailEnabled, copia });
+    /* La copia va DESPUES de contestar, no antes. Armarla recorre la base
+       entera y mandarla por correo puede tardar; mientras tanto, quien
+       llama a este trabajo se queda esperando. GitHub corta a los dos
+       minutos, daba el trabajo por fallido y lo reintentaba, aunque los
+       recordatorios ya hubieran salido bien.
+
+       Ahora los recordatorios contestan enseguida y la copia se hace sola
+       por detras. Si falla, no se anota la fecha y se reintenta mañana. */
+    copiaSemanalSiTocaba().catch(() => {});
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'server_error' });
