@@ -351,7 +351,7 @@ es:{
   common_logout:"Cerrar sesión", auth_logged_in_as:"Sesión de {name}",
   music_play:"Música relajante", music_pause:"Pausar música",
   set_saved:"Cambios guardados",
-  unit_ml:"ml", unit_g:"g", unit_un:"unidades",
+  unit_ml:"ml", unit_g:"g", unit_un:"unidades", unit_oz:"oz",
   chat_title:"Pregúntale a tu salón", chat_placeholder:"Escribe tu pregunta…",
   chat_empty:"Pregúntame sobre tu inventario, ventas, clientas o agenda.",
   chat_rate_limited:"Hay mucho tráfico ahora mismo. Inténtalo de nuevo en un momento.",
@@ -492,7 +492,7 @@ en:{
   common_logout:"Sign out", auth_logged_in_as:"Signed in as {name}",
   music_play:"Relaxing music", music_pause:"Pause music",
   set_saved:"Changes saved",
-  unit_ml:"ml", unit_g:"g", unit_un:"units",
+  unit_ml:"ml", unit_g:"g", unit_un:"units", unit_oz:"oz",
   chat_title:"Ask your salon", chat_placeholder:"Type your question…",
   chat_empty:"Ask me about your inventory, sales, clients or agenda.",
   chat_rate_limited:"Lots of traffic right now. Please try again in a moment.",
@@ -633,7 +633,7 @@ pt:{
   common_logout:"Sair", auth_logged_in_as:"Sessão de {name}",
   music_play:"Música relaxante", music_pause:"Pausar música",
   set_saved:"Alterações salvas",
-  unit_ml:"ml", unit_g:"g", unit_un:"unidades",
+  unit_ml:"ml", unit_g:"g", unit_un:"unidades", unit_oz:"oz",
   chat_title:"Pergunte ao seu salão", chat_placeholder:"Digite sua pergunta…",
   chat_empty:"Pergunte sobre seu estoque, vendas, clientes ou agenda.",
   chat_rate_limited:"Muito tráfego agora. Tente novamente em instantes.",
@@ -774,7 +774,7 @@ fr:{
   common_logout:"Se déconnecter", auth_logged_in_as:"Connecté en tant que {name}",
   music_play:"Musique relaxante", music_pause:"Mettre en pause",
   set_saved:"Modifications enregistrées",
-  unit_ml:"ml", unit_g:"g", unit_un:"unités",
+  unit_ml:"ml", unit_g:"g", unit_un:"unités", unit_oz:"oz",
   chat_title:"Interrogez votre salon", chat_placeholder:"Tapez votre question…",
   chat_empty:"Posez-moi des questions sur votre inventaire, vos ventes, vos clientes ou votre agenda.",
   chat_rate_limited:"Beaucoup de trafic en ce moment. Réessayez dans un instant.",
@@ -915,7 +915,7 @@ it:{
   common_logout:"Esci", auth_logged_in_as:"Accesso come {name}",
   music_play:"Musica rilassante", music_pause:"Metti in pausa",
   set_saved:"Modifiche salvate",
-  unit_ml:"ml", unit_g:"g", unit_un:"unità",
+  unit_ml:"ml", unit_g:"g", unit_un:"unità", unit_oz:"oz",
   chat_title:"Chiedi al tuo salone", chat_placeholder:"Scrivi la tua domanda…",
   chat_empty:"Chiedimi del tuo magazzino, delle vendite, delle clienti o dell'agenda.",
   chat_rate_limited:"C'è molto traffico ora. Riprova tra un momento.",
@@ -2910,7 +2910,7 @@ function renderLandingSettings(cfg){
 
 /* ================= modals ================= */
 function unitOptions(sel){
-  var units = [t('unit_ml'), t('unit_g'), t('unit_un')];
+  var units = [t('unit_ml'), t('unit_g'), t('unit_oz'), t('unit_un')];
   return units.map(function(u){ return '<option'+(sel===u?' selected':'')+'>'+u+'</option>'; }).join('');
 }
 function renderModal(){
@@ -3834,7 +3834,7 @@ function startApp(){
     var firstLoad = !state.ready;
     state.config = cfg;
     state.ready = true;
-    render();
+    if(firstLoad || !state.modal) render();
     if(cfg && firstLoad){
       try{
         if(!sessionStorage.getItem('kynb_welcomed')){
@@ -3844,13 +3844,20 @@ function startApp(){
       }catch(e){}
     }
   }));
-  unsubs.push(Data.subscribeCollection('products', function(list){ state.products = list; render(); }));
-  unsubs.push(Data.subscribeCollection('usage', function(list){ state.usage = list; render(); }));
-  unsubs.push(Data.subscribeCollection('clients', function(list){ state.clients = list; render(); }));
-  unsubs.push(Data.subscribeCollection('color_records', function(list){ state.colorRecords = list; render(); }));
-  unsubs.push(Data.subscribeCollection('visits', function(list){ state.visits = list; render(); }));
-  unsubs.push(Data.subscribeCollection('appointments', function(list){ state.appointments = list; render(); }));
-  unsubs.push(Data.subscribeCollection('booking_requests', function(list){ state.bookingRequests = list; render(); }));
+  // While a modal is open (e.g. "Nueva cita", with its native date picker),
+  // a background refresh landing mid-edit used to rebuild the whole form
+  // from the old data, wiping whatever the stylist had just picked or typed
+  // — the date field especially, since a half-chosen native <input
+  // type="date"> reports an empty value until all three parts are set, so
+  // the rebuild "restored" that emptiness over real input. The state itself
+  // still updates; only the redraw waits until the modal is closed.
+  unsubs.push(Data.subscribeCollection('products', function(list){ state.products = list; if(!state.modal) render(); }));
+  unsubs.push(Data.subscribeCollection('usage', function(list){ state.usage = list; if(!state.modal) render(); }));
+  unsubs.push(Data.subscribeCollection('clients', function(list){ state.clients = list; if(!state.modal) render(); }));
+  unsubs.push(Data.subscribeCollection('color_records', function(list){ state.colorRecords = list; if(!state.modal) render(); }));
+  unsubs.push(Data.subscribeCollection('visits', function(list){ state.visits = list; if(!state.modal) render(); }));
+  unsubs.push(Data.subscribeCollection('appointments', function(list){ state.appointments = list; if(!state.modal) render(); }));
+  unsubs.push(Data.subscribeCollection('booking_requests', function(list){ state.bookingRequests = list; if(!state.modal) render(); }));
   Data.getUsers().then(function(users){
     state.teamUsers = users || [];
     var myId = currentUserId();
