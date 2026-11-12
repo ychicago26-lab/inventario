@@ -318,7 +318,8 @@ es:{
   dash_sales_week:"Ventas de la semana", dash_sales_month:"Ventas del mes",
   dash_most:"Más usados (30 días)", dash_least:"Menos usados (30 días)", dash_no_usage:"Aún no hay uso registrado.",
   inv_sub:"Tintes y productos de tu salón", inv_add:"Nuevo producto", inv_brand:"Marca", inv_color:"Color / Tono",
-  inv_name:"Nombre del producto", inv_stock:"Existencia", inv_unit:"Unidad", inv_threshold:"Aviso de stock bajo",
+  inv_name:"Nombre del producto", inv_stock:"Existencia", inv_stock_hint:"La cantidad total que tienes, en la unidad elegida (no el número de cajas).", inv_unit:"Unidad", inv_threshold:"Aviso de stock bajo",
+  inv_price_hint:"El precio de una sola unidad (1 oz, 1 ml o 1 g) — no el de la caja completa. Divide lo que pagaste entre la cantidad que traía.",
   inv_price:"Precio de venta", inv_status:"Estado", inv_use:"Registrar uso", inv_empty:"Aún no has agregado productos.",
   inv_empty_cta:"Agrega tu primer tinte para empezar a controlar el inventario.",
   inv_new_title:"Nuevo producto", inv_edit_title:"Editar producto", inv_hex:"Color de muestra",
@@ -459,7 +460,8 @@ en:{
   dash_sales_week:"Sales this week", dash_sales_month:"Sales this month",
   dash_most:"Most used (30 days)", dash_least:"Least used (30 days)", dash_no_usage:"No usage recorded yet.",
   inv_sub:"Dyes and products in your salon", inv_add:"New product", inv_brand:"Brand", inv_color:"Color / Shade",
-  inv_name:"Product name", inv_stock:"Stock", inv_unit:"Unit", inv_threshold:"Low-stock alert at",
+  inv_name:"Product name", inv_stock:"Stock", inv_stock_hint:"The total amount you have, in the unit you picked (not the number of boxes).", inv_unit:"Unit", inv_threshold:"Low-stock alert at",
+  inv_price_hint:"The price of a single unit (1 oz, 1 ml or 1 g) — not the whole box. Divide what you paid by how much it contained.",
   inv_price:"Sale price", inv_status:"Status", inv_use:"Log use", inv_empty:"You haven't added any products yet.",
   inv_empty_cta:"Add your first dye to start tracking inventory.",
   inv_new_title:"New product", inv_edit_title:"Edit product", inv_hex:"Swatch color",
@@ -600,7 +602,8 @@ pt:{
   dash_sales_week:"Vendas da semana", dash_sales_month:"Vendas do mês",
   dash_most:"Mais usados (30 dias)", dash_least:"Menos usados (30 dias)", dash_no_usage:"Ainda não há uso registrado.",
   inv_sub:"Tintas e produtos do seu salão", inv_add:"Novo produto", inv_brand:"Marca", inv_color:"Cor / Tom",
-  inv_name:"Nome do produto", inv_stock:"Estoque", inv_unit:"Unidade", inv_threshold:"Alerta de estoque baixo em",
+  inv_name:"Nome do produto", inv_stock:"Estoque", inv_stock_hint:"A quantidade total que você tem, na unidade escolhida (não o número de caixas).", inv_unit:"Unidade", inv_threshold:"Alerta de estoque baixo em",
+  inv_price_hint:"O preço de uma única unidade (1 oz, 1 ml ou 1 g) — não o da caixa inteira. Divida o que pagou pela quantidade que veio.",
   inv_price:"Preço de venda", inv_status:"Status", inv_use:"Registrar uso", inv_empty:"Você ainda não adicionou produtos.",
   inv_empty_cta:"Adicione sua primeira tinta para começar a controlar o estoque.",
   inv_new_title:"Novo produto", inv_edit_title:"Editar produto", inv_hex:"Cor da amostra",
@@ -741,7 +744,8 @@ fr:{
   dash_sales_week:"Ventes de la semaine", dash_sales_month:"Ventes du mois",
   dash_most:"Les plus utilisés (30 j)", dash_least:"Les moins utilisés (30 j)", dash_no_usage:"Aucune utilisation enregistrée.",
   inv_sub:"Colorations et produits de votre salon", inv_add:"Nouveau produit", inv_brand:"Marque", inv_color:"Couleur / Teinte",
-  inv_name:"Nom du produit", inv_stock:"Stock", inv_unit:"Unité", inv_threshold:"Alerte de stock faible à",
+  inv_name:"Nom du produit", inv_stock:"Stock", inv_stock_hint:"La quantité totale que vous avez, dans l'unité choisie (pas le nombre de boîtes).", inv_unit:"Unité", inv_threshold:"Alerte de stock faible à",
+  inv_price_hint:"Le prix d'une seule unité (1 oz, 1 ml ou 1 g) — pas celui de la boîte entière. Divisez ce que vous avez payé par la quantité contenue.",
   inv_price:"Prix de vente", inv_status:"Statut", inv_use:"Enregistrer l'utilisation", inv_empty:"Vous n'avez pas encore ajouté de produits.",
   inv_empty_cta:"Ajoutez votre première coloration pour suivre l'inventaire.",
   inv_new_title:"Nouveau produit", inv_edit_title:"Modifier le produit", inv_hex:"Couleur d'échantillon",
@@ -882,7 +886,8 @@ it:{
   dash_sales_week:"Vendite della settimana", dash_sales_month:"Vendite del mese",
   dash_most:"Più usati (30 giorni)", dash_least:"Meno usati (30 giorni)", dash_no_usage:"Nessun utilizzo registrato ancora.",
   inv_sub:"Tinte e prodotti del tuo salone", inv_add:"Nuovo prodotto", inv_brand:"Marca", inv_color:"Colore / Tono",
-  inv_name:"Nome del prodotto", inv_stock:"Giacenza", inv_unit:"Unità", inv_threshold:"Avviso scorte basse a",
+  inv_name:"Nome del prodotto", inv_stock:"Giacenza", inv_stock_hint:"La quantità totale che hai, nell'unità scelta (non il numero di scatole).", inv_unit:"Unità", inv_threshold:"Avviso scorte basse a",
+  inv_price_hint:"Il prezzo di una singola unità (1 oz, 1 ml o 1 g) — non quello dell'intera confezione. Dividi quanto hai pagato per la quantità contenuta.",
   inv_price:"Prezzo di vendita", inv_status:"Stato", inv_use:"Registra utilizzo", inv_empty:"Non hai ancora aggiunto prodotti.",
   inv_empty_cta:"Aggiungi la tua prima tinta per iniziare a controllare il magazzino.",
   inv_new_title:"Nuovo prodotto", inv_edit_title:"Modifica prodotto", inv_hex:"Colore campione",
@@ -2923,10 +2928,12 @@ function renderModal(){
       '<div class="row2"><div class="field"><label>'+t('inv_brand')+'</label><input id="pf-brand" list="brand-list" value="'+esc(p.brand||'')+'"></div>'+
       '<div class="field"><label>'+t('inv_color')+'</label><input id="pf-color" value="'+esc(p.color||'')+'" required></div></div>'+
       '<datalist id="brand-list">'+(state.config.brands||[]).map(function(b){return '<option value="'+esc(b)+'">';}).join('')+'</datalist>'+
-      '<div class="row2"><div class="field"><label>'+t('inv_stock')+'</label><input id="pf-stock" type="number" min="0" step="0.1" value="'+(p.stock!=null?p.stock:0)+'" required></div>'+
+      '<div class="row2"><div class="field"><label>'+t('inv_stock')+'</label><input id="pf-stock" type="number" min="0" step="0.1" value="'+(p.stock!=null?p.stock:0)+'" required>'+
+      '<span style="font-size:12px;color:var(--text-dim)">'+t('inv_stock_hint')+'</span></div>'+
       '<div class="field"><label>'+t('inv_unit')+'</label><select id="pf-unit">'+unitOptions(p.unit)+'</select></div></div>'+
       '<div class="row2"><div class="field"><label>'+t('inv_threshold')+'</label><input id="pf-threshold" type="number" min="0" step="0.1" value="'+(p.threshold!=null?p.threshold:(state.config.defaultThreshold!=null?state.config.defaultThreshold:5))+'"></div>'+
-      '<div class="field"><label>'+t('inv_price')+'</label><input id="pf-price" type="number" min="0" step="0.01" value="'+(p.price!=null?p.price:0)+'"></div></div>'+
+      '<div class="field"><label>'+t('inv_price')+'</label><input id="pf-price" type="number" min="0" step="0.01" value="'+(p.price!=null?p.price:0)+'">'+
+      '<span style="font-size:12px;color:var(--text-dim)">'+t('inv_price_hint')+'</span></div></div>'+
       '<div class="field"><label>'+t('inv_hex')+' ('+t('common_optional')+')</label><input id="pf-hex" type="color" value="'+esc(p.hex||'#c8a35f')+'" style="height:42px;padding:4px"></div>'+
       '<div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">'+t('common_cancel')+'</button><button type="submit" class="btn btn-primary">'+t('common_save')+'</button></div>'+
       '</form>';
