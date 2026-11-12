@@ -1420,6 +1420,7 @@ function currentAndPrevYM(){
 function usageInRange(fromISO, toISO){
   var totalsByProduct = {}; // id -> {qty, revenue}
   var grandQty=0, grandRevenue=0;
+  var byUnit = {}; // unit -> qty — kept separate because oz, ml and g can't be added together
   state.usage.forEach(function(u){
     if(!u.days) return;
     Object.keys(u.days).forEach(function(dd){
@@ -1432,9 +1433,22 @@ function usageInRange(fromISO, toISO){
       var cur = totalsByProduct[u.productId] || {qty:0, revenue:0, brand:u.brand, color:u.color, name:u.name};
       cur.qty += qty; cur.revenue += rev;
       totalsByProduct[u.productId] = cur;
+      var prod = state.products.find(function(x){ return x.id===u.productId; });
+      var unit = (prod && prod.unit) || t('unit_un');
+      byUnit[unit] = (byUnit[unit]||0) + qty;
     });
   });
-  return {byProduct: totalsByProduct, qty: grandQty, revenue: grandRevenue};
+  return {byProduct: totalsByProduct, qty: grandQty, revenue: grandRevenue, byUnit: byUnit};
+}
+// "150 g · 60 ml · 2 oz" — a single combined number across oz/ml/g products
+// would just be wrong, since those units don't add up to anything real.
+function fmtQtyByUnit(byUnit){
+  var units = Object.keys(byUnit||{}).filter(function(u){ return byUnit[u]; });
+  if(!units.length) return '0';
+  return units.map(function(u){
+    var n = Math.round(byUnit[u]*10)/10;
+    return n+' '+u;
+  }).join(' · ');
 }
 /* What to buy, worked out from what actually gets used.
    A low-stock flag alone says "this is nearly gone" but not "buy three":
@@ -1893,9 +1907,9 @@ function renderDashboard(){
   html += '</div>';
 
   html += '<div class="grid-kpi">';
-  html += kpi(t('dash_used_today'), todayAgg.qty);
-  html += kpi(t('dash_used_week'), weekAgg.qty);
-  html += kpi(t('dash_used_month'), monthAgg.qty);
+  html += kpi(t('dash_used_today'), fmtQtyByUnit(todayAgg.byUnit), true);
+  html += kpi(t('dash_used_week'), fmtQtyByUnit(weekAgg.byUnit), true);
+  html += kpi(t('dash_used_month'), fmtQtyByUnit(monthAgg.byUnit), true);
   html += kpi(t('dash_sales_week'), fmtMoney(weekAgg.revenue), true);
   html += kpi(t('dash_sales_month'), fmtMoney(monthAgg.revenue), true);
   html += '</div>';
@@ -2035,7 +2049,7 @@ function renderReports(){
     '</div></div>';
 
   html += '<div class="grid-kpi" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">';
-  html += kpi(t('rep_total_units'), agg.qty);
+  html += kpi(t('rep_total_units'), fmtQtyByUnit(agg.byUnit), true);
   html += kpi(t('rep_total_sales'), fmtMoney(agg.revenue), true);
   html += '</div>';
 
@@ -3063,9 +3077,9 @@ function buildSalonContext(){
 
   lines.push('');
   lines.push('USO Y VENTAS:');
-  lines.push('- Usado hoy: '+todayAgg.qty+' unidades, ventas '+fmtMoney(todayAgg.revenue));
-  lines.push('- Usado en los últimos 7 días: '+weekAgg.qty+' unidades, ventas '+fmtMoney(weekAgg.revenue));
-  lines.push('- Usado en el mes calendario actual: '+monthAgg.qty+' unidades, ventas '+fmtMoney(monthAgg.revenue));
+  lines.push('- Usado hoy: '+fmtQtyByUnit(todayAgg.byUnit)+', ventas '+fmtMoney(todayAgg.revenue));
+  lines.push('- Usado en los últimos 7 días: '+fmtQtyByUnit(weekAgg.byUnit)+', ventas '+fmtMoney(weekAgg.revenue));
+  lines.push('- Usado en el mes calendario actual: '+fmtQtyByUnit(monthAgg.byUnit)+', ventas '+fmtMoney(monthAgg.revenue));
   if(ranked.length){
     lines.push('- Ranking de uso de los últimos 30 días (de más a menos usado):');
     ranked.forEach(function(r,i){ lines.push('   '+(i+1)+'. '+(r.brand?r.brand+' ':'')+(r.color||r.name||'')+': '+r.qty+' unidades, ventas '+fmtMoney(r.revenue)); });
